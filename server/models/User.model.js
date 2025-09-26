@@ -1,0 +1,116 @@
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import { required } from "joi";
+
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required."],
+      trim: true,
+      maxlength: [50, "Name must be less than 50 characters."],
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required."],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
+        "Please fill a valid email address.",
+      ],
+    },
+    password: {
+      type: String,
+      required: function () {
+        // Password is required ONLY IF user doesn't have googleID not OAuth user
+        return !this.googleId;
+      },
+      minlength: [8, "Password must be at least 8 characters."],
+      select: false, // Do not return password field by default in queries
+    },
+
+    // *** Email Verification ***
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otpCode: {
+      type: String,
+      select: false, // Do not return otpCode field by default in queries
+    },
+    otpExpiresAt: {
+      type: Date,
+      select: false, // Do not return otpExpiresAt field by default in queries
+    },
+
+    // *** Password Management ***
+    passwordChangedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    passwordExpiresAt: {
+      type: Date,
+      default: function () {
+        // Set default password expiry to 90 days from creation
+        const expiryDate = new Date();
+        expiryDate.setDate(
+          expiryDate.getDate() + (process.env.PASSWORD_EXPIRY_DAYS || 90)
+        );
+        return expiryDate;
+      },
+    },
+
+    // *** Password Reset System ***
+    resetPasswordToken: {
+      type: String,
+      select: false, // Do not return resetPasswordToken field by default in queries
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false, // Do not return resetPasswordExpires field by default in queries
+    },
+
+    // *** JWT Token Management ***
+    refreshTokens: [
+      {
+        token: {
+          type: String,
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    // *** OAuth Integration (Google) ***
+    googleId: {
+      type: String,
+      spars: true, // Allows multiple null values but unique non-null values
+    },
+    avatar: {
+      type: String, // URL to the user's avatar image
+    },
+
+    // *** Account Management ***
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLogin: {
+      type: Date,
+    },
+  },
+  {
+    timestamps: true, // Automatically manage createdAt and updatedAt fields
+    toJSON: { virtuals: true }, // Include virtuals when converting to JSON
+    toObject: { virtuals: true },
+  }
+);
+
+// Create the Model
+const User = mongoose.model("User", userSchema);
+export default User;
