@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import { required } from "joi";
 
 const userSchema = new mongoose.Schema(
   {
@@ -89,7 +88,7 @@ const userSchema = new mongoose.Schema(
     // *** OAuth Integration (Google) ***
     googleId: {
       type: String,
-      spars: true, // Allows multiple null values but unique non-null values
+      sparse: true, // Allows multiple null values but unique non-null values
     },
     avatar: {
       type: String, // URL to the user's avatar image
