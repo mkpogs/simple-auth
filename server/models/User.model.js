@@ -206,8 +206,34 @@ userSchema.methods.removeAllRefreshTokens = () => {
   this.refreshTokens = [];
 };
 
-// ***  ***
+// *** Generate OTP code ***
+userSchema.methods.generateOTP = () => {
+  // Generate a 6-digit OTP code
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+  // Set OTP code and expiry (10 minutes from now)
+  this.otpCode = otp;
+  this.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  return otp;
+};
+
+// *** Verify OTP code ***
+userSchema.methods.verifyOTP = (candidateOTP) => {
+  // Check if OTP is exists and has not expired
+  if (!this.otpCode || !this.otpExpiresAt) return false;
+  if (this.otpExpiresAt < new Date()) return false;
+
+  return this.otpCode === candidateOTP;
+};
+
+// *** Clear OTP after verification ***
+userSchema.methods.clearOTP = () => {
+  this.otpCode = undefined;
+  this.otpExpiresAt = undefined;
+};
+
+// ***  ***
 // ***  ***
 
 // Create the Model
