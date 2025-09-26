@@ -111,6 +111,19 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// ==================== INDEXES ====================
+// Improve query performance
+userSchema.index({ email: 1 });
+userSchema.index({ googleId: 1 });
+userSchema.index({ resetPasswordToken: 1 });
+userSchema.index({ "refreshTokens.token": 1 });
+
+// ==================== VIRTUALS ====================
+// Virtual field to check if password is expired
+userSchema.virtual("isPasswordExpired").get(() => {
+  return this.passwordExpiresAt < new Date();
+});
+
 // Create the Model
 const User = mongoose.model("User", userSchema);
 export default User;
