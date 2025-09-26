@@ -119,13 +119,13 @@ userSchema.index({ "refreshTokens.token": 1 });
 
 // ==================== VIRTUALS ====================
 // Virtual field to check if password is expired
-userSchema.virtual("isPasswordExpired").get(() => {
+userSchema.virtual("isPasswordExpired").get(function () {
   return this.passwordExpiresAt < new Date();
 });
 
 // ==================== MIDDLEWARES ====================
 // *** Hash password before saving ***
-userSchema.pre("save", async (next) => {
+userSchema.pre("save", async function (next) {
   // Only hash the password if it's been modified (or is new)
   if (!this.isModified("password")) return next();
 
@@ -152,7 +152,7 @@ userSchema.pre("save", async (next) => {
 });
 
 // *** Update lastLogin before saving ***
-userSchema.pre("save", (next) => {
+userSchema.pre("save", function (next) {
   if (this.isModified("lastLogin")) {
     this.lastLogin = new Date();
   }
@@ -161,13 +161,13 @@ userSchema.pre("save", (next) => {
 
 // ==================== INSTANCE METHODS ====================
 // *** Compare password method ***
-userSchema.methods.comparePassword = async (candidatePassword) => {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // *** Check if password was changed after JWT was issued ***
-userSchema.methods.changedPasswordAfter = (JWTTimestamp) => {
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
       this.passwordChangedAt.getTime() / 1000,
@@ -179,12 +179,12 @@ userSchema.methods.changedPasswordAfter = (JWTTimestamp) => {
 };
 
 // *** Check if user's password is expired ***
-userSchema.methods.isPasswordExpired = () => {
+userSchema.methods.isPasswordExpired = function () {
   return this.passwordExpiresAt < new Date();
 };
 
 // *** Add Refresh Token ***
-userSchema.methods.addRefreshToken = async (token) => {
+userSchema.methods.addRefreshToken = async function (token) {
   this.refreshTokens.push({ token });
 
   // Keep Only last 5 refresh tokens (security measure)
@@ -194,19 +194,19 @@ userSchema.methods.addRefreshToken = async (token) => {
 };
 
 // *** Remove Specific Refresh Token ***
-userSchema.methods.removeRefreshToken = (token) => {
+userSchema.methods.removeRefreshToken = function (token) {
   this.refreshTokens = this.refreshTokens.filter(
     (refreshTokens) => refreshTokens.token !== token
   );
 };
 
 // *** Remove all Refresh tokens (logout from all devices) ***
-userSchema.methods.removeAllRefreshTokens = () => {
+userSchema.methods.removeAllRefreshTokens = function () {
   this.refreshTokens = [];
 };
 
 // *** Generate OTP code ***
-userSchema.methods.generateOTP = () => {
+userSchema.methods.generateOTP = function () {
   // Generate a 6-digit OTP code
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -218,7 +218,7 @@ userSchema.methods.generateOTP = () => {
 };
 
 // *** Verify OTP code ***
-userSchema.methods.verifyOTP = (candidateOTP) => {
+userSchema.methods.verifyOTP = function (candidateOTP) {
   // Check if OTP is exists and has not expired
   if (!this.otpCode || !this.otpExpiresAt) return false;
   if (this.otpExpiresAt < new Date()) return false;
@@ -227,19 +227,19 @@ userSchema.methods.verifyOTP = (candidateOTP) => {
 };
 
 // *** Clear OTP after verification ***
-userSchema.methods.clearOTP = () => {
+userSchema.methods.clearOTP = function () {
   this.otpCode = undefined;
   this.otpExpiresAt = undefined;
 };
 
 // ==================== STATIC METHODS ====================
 // *** Find user by email (including unverified users) ***
-userSchema.statics.findByEmail = (email) => {
+userSchema.statics.findByEmail = function (email) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
 // *** Find verified user by email ***
-userSchema.statics.findVerifiedByEmail = (email) => {
+userSchema.statics.findVerifiedByEmail = function (email) {
   return this.findOne({
     email: email.toLowerCase(),
     isVerified: true,
@@ -248,7 +248,7 @@ userSchema.statics.findVerifiedByEmail = (email) => {
 };
 
 // *** Find user by google Id ***
-userSchema.statics.findByGoogleId = (googleId) => {
+userSchema.statics.findByGoogleId = function (googleId) {
   return this.findOne({
     googleId,
     isActive: true,
@@ -256,7 +256,7 @@ userSchema.statics.findByGoogleId = (googleId) => {
 };
 
 // *** Find user by refresh token ***
-userSchema.statics.findByRefreshToken = (token) => {
+userSchema.statics.findByRefreshToken = function (token) {
   return this.findOne({
     "refreshTokens.token": token,
     isActive: true,
