@@ -194,6 +194,20 @@ userSchema.methods.addRefreshToken = async (token) => {
   }
 };
 
+// *** Remove Specific Refresh Token ***
+userSchema.methods.removeRefreshToken = (token) => {
+  this.refreshTokens = this.refreshTokens.filter(
+    (refreshTokens) => refreshTokens.token !== token
+  );
+};
+
+// *** Remove all Refresh tokens (logout from all devices) ***
+userSchema.methods.removeAllRefreshTokens = () => {
+  this.refreshTokens = [];
+};
+
+// ***  ***
+
 // ***  ***
 
 // Create the Model
