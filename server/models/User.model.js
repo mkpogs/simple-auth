@@ -179,6 +179,23 @@ userSchema.methods.changedPasswordAfter = (JWTTimestamp) => {
   return false;
 };
 
+// *** Check if user's password is expired ***
+userSchema.methods.isPasswordExpired = () => {
+  return this.passwordExpiresAt < new Date();
+};
+
+// *** Add Refresh Token ***
+userSchema.methods.addRefreshToken = async (token) => {
+  this.refreshTokens.push({ token });
+
+  // Keep Only last 5 refresh tokens (security measure)
+  if (this.refreshTokens.length > 5) {
+    this.refreshTokens = this.refreshTokens.slice(-5);
+  }
+};
+
+// ***  ***
+
 // Create the Model
 const User = mongoose.model("User", userSchema);
 export default User;
