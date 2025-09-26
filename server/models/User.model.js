@@ -233,9 +233,37 @@ userSchema.methods.clearOTP = () => {
   this.otpExpiresAt = undefined;
 };
 
-// ***  ***
-// ***  ***
+// ==================== STATIC METHODS ====================
+// *** Find user by email (including unverified users) ***
+userSchema.statics.findByEmail = (email) => {
+  return this.findOne({ email: email.toLowerCase() });
+};
 
-// Create the Model
+// *** Find verified user by email ***
+userSchema.statics.findVerifiedByEmail = (email) => {
+  return this.findOne({
+    email: email.toLowerCase(),
+    isVerified: true,
+    isActive: true,
+  });
+};
+
+// *** Find user by google Id ***
+userSchema.statics.findByGoogleId = (googleId) => {
+  return this.findOne({
+    googleId,
+    isActive: true,
+  });
+};
+
+// *** Find user by refresh token ***
+userSchema.statics.findByRefreshToken = (token) => {
+  return this.findOne({
+    "refreshTokens.token": token,
+    isActive: true,
+  });
+};
+
+// ********** CREATE THE MODEL  **********
 const User = mongoose.model("User", userSchema);
 export default User;
