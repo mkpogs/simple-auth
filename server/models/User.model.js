@@ -160,6 +160,25 @@ userSchema.pre("save", (next) => {
   next();
 });
 
+// ==================== INSTANCE METHODS ====================
+// *** Compare password method ***
+userSchema.methods.comparePassword = async (candidatePassword) => {
+  if (!this.password) return false;
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// *** Check if password was changed after JWT was issued ***
+userSchema.methods.changedPasswordAfter = (JWTTimestamp) => {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(
+      this.passwordChangedAt.getTime() / 1000,
+      10
+    );
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+};
+
 // Create the Model
 const User = mongoose.model("User", userSchema);
 export default User;
