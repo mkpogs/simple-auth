@@ -124,6 +124,42 @@ userSchema.virtual("isPasswordExpired").get(() => {
   return this.passwordExpiresAt < new Date();
 });
 
+// ==================== MIDDLEWARES ====================
+// *** Hash password before saving ***
+userSchema.pre("save", async (next) => {
+  // Only hash the password if it's been modified (or is new)
+  if (!this.isModified("password")) return next();
+
+  // Don't hash if password is not provided (OAuth users)
+  if (!this.password) return next();
+
+  try {
+    // Hash the password with a cost of 12
+    this.password = await bcrypt.hash(this.password, 12);
+
+    // Update password  change timestamp
+    this.passwordChangedAt = new Date();
+
+    // Set new password expiry date
+    const expiryDate = new Date();
+    expiryDate.setDate(
+      expiryDate.getDate() + (process.env.PASSWORD_EXPIRY_DAYS || 90)
+    );
+    this.passwordExpiresAt = expiryDate;
+    next();
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// *** Update lastLogin before saving ***
+userSchema.pre("save", (next) => {
+  if (this.isModified("lastLogin")) {
+    this.lastLogin = new Date();
+  }
+  next();
+});
+
 // Create the Model
 const User = mongoose.model("User", userSchema);
 export default User;
