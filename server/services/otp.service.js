@@ -103,5 +103,25 @@ class OTPService {
     };
   }
 
+  // *** Security: Generate cryptographically secure random bytes ***
+  generateSecureToken(bytes = 32) {
+    return crypto.randomBytes(bytes).toString("hex");
+  }
+
+  // *** Validate password reset token format ***
+  isValidResetToken(token) {
+    // Check if token is 64-character hex string
+    const tokenRegex = /^[a-f0-9]{64}$/i;
+    return tokenRegex.test(token);
+  }
+
+  // *** Generate time-based hash for additional security ***
+  generateTimeBasedHash(data, timeWindow = 300000) {
+    // 5 minutes default
+    const currentTime = Math.floor(Date.now() / timeWindow);
+    const hashData = `${data}_${currentTime}`;
+    return crypto.createHash("sha256").update(hashData).digest("hex");
+  }
+
   // ***  ***
 }
