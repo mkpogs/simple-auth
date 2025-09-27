@@ -31,5 +31,23 @@ class OTPService {
     }
   }
 
+  // *** Generate OTP with expiry ***
+  generateOTPWithExpiry(expiryMinutes = 10) {
+    const otp = this.generateOTP();
+    const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
+    return {
+      otp,
+      expiresAt,
+    };
+  }
+
+  // *** Validate OTP Format ***
+  isValidOTPFormat(otp) {
+    // Check if OTP is a 6-digit number
+    const otpRegex = /^\d{6}$/;
+    return otpRegex.test(otp);
+  }
+
   // ***  ***
 }
