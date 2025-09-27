@@ -83,5 +83,25 @@ class OTPService {
     }
   }
 
+  // *** Rate limiting helper - check if too many OTP requests ***
+  checkOTPRateLimit(lastOTPSent, cooldownMinutes = 1) {
+    if (!lastOTPSent) return true; // First request
+
+    const cooldownPeriod = cooldownMinutes * 60 * 1000; // Convert to milliseconds
+    const timeSinceLastOTP = Date.now() - lastOTPSent.getTime();
+
+    return timeSinceLastOTP >= cooldownPeriod;
+  }
+
+  // *** Generate OTP attempt tracking ***
+  createOTPAttempt(ip, email) {
+    return {
+      ip,
+      email: email.toLowerCase(),
+      timestamp: new Date(),
+      attempts: 1,
+    };
+  }
+
   // ***  ***
 }
