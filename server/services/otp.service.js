@@ -123,5 +123,36 @@ class OTPService {
     return crypto.createHash("sha256").update(hashData).digest("hex");
   }
 
+  // *** Verify time-based hash ***
+  verifyTimeBasedHash(data, hash, timeWindow = 300000) {
+    // Check current time window
+    const currentHash = this.generateTimeBasedHash(data, timeWindow);
+    if (currentHash === hash) return true;
+
+    // Check previous time window (for edge cases)
+    const previousTime = Math.floor(Date.now() / timeWindow) - 1;
+    const previousHashData = `${data}_${previousTime}`;
+    const previousHash = crypto
+      .createHash("sha256")
+      .update(previousHashData)
+      .digest("hex");
+
+    return previousHash === hash;
+  }
+
+  // *** Clean up expired OTP records (utility function) ***
+  isExpiredOTP(createdAt, expiryMinutes = 10) {
+    const expiryTime = new Date(
+      createdAt.getTime() + expiryMinutes * 60 * 1000
+    );
+    return new Date() > expiryTime;
+  }
+
+  // *** Format OTP for display (with spaces) ***
+  formatOTPForDisplay(otp) {
+    // Format 123456 as "123 456" for better readability
+    return otp.replace(/(\d{3})(\d{3})/, "$1 $2");
+  }
+
   // ***  ***
 }
