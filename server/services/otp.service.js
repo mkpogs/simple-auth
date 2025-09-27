@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import AppError from "../utils/AppError";
+import AppError from "../utils/AppError.js";
 
 class OTPService {
   // *** Generate a 6-digit OTP code ***
@@ -51,7 +51,7 @@ class OTPService {
 
   // *** Validate if OTP is expired ***
   isOTPExpired(expiryDate) {
-    return newDate() > expiryDate;
+    return new Date() > expiryDate;
   }
 
   // *** Generate verification code for different purposes ***
