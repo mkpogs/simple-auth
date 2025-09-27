@@ -29,6 +29,34 @@ class JWTService {
     }
   }
 
+  // *** Verify Access Token ***
+  verifyAccessToken(token) {
+    try {
+      return jwt.verify(token, JWT_ACCESS_SECRET);
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        throw new AppError("Access token expired", 401);
+      } else if (error.name === "JsonWebTokenError") {
+        throw new AppError("Invalid access token", 401);
+      }
+      throw new AppError("Token verification failed", 401);
+    }
+  }
+
+  // *** Verify Refresh Token ***
+  verifyRefreshToken(token) {
+    try {
+      return jwt.verify(token, JWT_REFRESH_SECRET);
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        throw new AppError("Refresh token has expired", 401);
+      } else if (error.name === "JsonWebTokenError") {
+        throw new AppError("Invalid refresh token", 401);
+      }
+      throw new AppError("Token verification failed", 401);
+    }
+  }
+
   // *** ***
 }
 
