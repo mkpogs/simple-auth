@@ -13,5 +13,23 @@ class OTPService {
     return crypto.randomBytes(32).toString("hex");
   }
 
+  // *** Hash OTP for storage (optional security layer) ***
+  async hashOTP(otp) {
+    try {
+      return await bcrypt.hash(otp, 12);
+    } catch (error) {
+      throw new AppError("Failed to hash OTP", 500);
+    }
+  }
+
+  // *** Verify hashed OTP (if using hashed storage) ***
+  async verifyHashedOTP(plainOTP, hashedOTP) {
+    try {
+      return await bcrypt.compare(plainOTP, hashedOTP);
+    } catch (error) {
+      throw new AppError("Failed to verify OTP", 500);
+    }
+  }
+
   // ***  ***
 }
