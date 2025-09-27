@@ -154,5 +154,27 @@ class OTPService {
     return otp.replace(/(\d{3})(\d{3})/, "$1 $2");
   }
 
+  // Mask OTP for logging (security)
+  maskOTPForLogging(otp) {
+    if (!otp || otp.length < 4) return "***";
+    return otp.substring(0, 2) + "****";
+  }
+
+  // Generate backup codes (for 2FA recovery)
+  generateBackupCodes(count = 8) {
+    const codes = [];
+    for (let i = 0; i < count; i++) {
+      const code = this.generateVerificationCode("alphanumeric", 8);
+      codes.push(code);
+    }
+    return codes;
+  }
+
+  // Validate email format (helper)
+  isValidEmail(email) {
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+    return emailRegex.test(email);
+  }
+
   // ***  ***
 }
