@@ -49,5 +49,39 @@ class OTPService {
     return otpRegex.test(otp);
   }
 
+  // *** Validate if OTP is expired ***
+  isOTPExpired(expiryDate) {
+    return newDate() > expiryDate;
+  }
+
+  // *** Generate verification code for different purposes ***
+  generateVerificationCode(type = "email", length = 6) {
+    switch (type) {
+      case "email":
+        // 6-digit numeric OTP for email verification
+        return Math.floor(100000 + Math.random() * 900000).toString();
+
+      case "sms":
+        // 4-digit numeric OTP for SMS (shorter for mobile)
+        return Math.floor(1000 + Math.random() * 9000).toString();
+
+      case "reset":
+        // 32-character hex token for password reset
+        return crypto.randomBytes(32).toString("hex");
+
+      case "alphanumeric":
+        // Alphanumeric code
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let result = "";
+        for (let i = 0; i < length; i++) {
+          result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+
+      default:
+        return this.generateOTP();
+    }
+  }
+
   // ***  ***
 }
