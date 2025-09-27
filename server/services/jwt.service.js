@@ -57,7 +57,37 @@ class JWTService {
     }
   }
 
-  // *** ***
+  // *** Generate Token Pair (Access + Refresh) ***
+  generateTokenPair(user) {
+    const payload = {
+      userId: user._id,
+      email: user.email,
+    };
+
+    return {
+      accessToken: this.generateAccessToken(payload),
+      refreshToken: this.generateRefreshToken(payload),
+    };
+  }
+
+  // *** Decode Token without verification (for debugging) ***
+  decodeToken(token) {
+    try {
+      return jwt.decode(token);
+    } catch (error) {
+      throw new AppError("Failed to decode token", 400);
+    }
+  }
+
+  // *** Get Token expiry time ***
+  getTokenExpiry(token) {
+    try {
+      const decoded = jwt.decode(token);
+      return new Date(decoded.exp * 1000);
+    } catch (error) {
+      throw new AppError("Failed to get token expiry", 400);
+    }
+  }
 }
 
 export default new JWTService();
