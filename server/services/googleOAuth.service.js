@@ -102,9 +102,35 @@ class GoogleOAuthService {
     }
   }
 
-  //   ***  ***
+  //   *** Get User Info using access token ***
+  async getUserInfo(accessToken) {
+    try {
+      const oauth2 = google.oauth2({
+        version: "v2",
+        auth: this.oauth2Client,
+      });
+      this.oauth2Client.setCredentials({
+        access_token: accessToken,
+      });
 
-  //   ***  ***
+      const { data } = await oauth2.userinfo.get();
+      return data;
+    } catch (error) {
+      console.error("Error getting google user info:", error);
+      throw new AppError("Failed to get Google user info", 400);
+    }
+  }
+
+  //   *** Remove Google Tokens (for account  disconnection) ***
+  async revokeTokens(accessToken) {
+    try {
+      await this.oauth2Client.revokeToken(accessToken);
+      return true;
+    } catch (error) {
+      console.error("Error revoking Google tokens:", error);
+      throw new AppError("Failed to revoke Google tokens", 500);
+    }
+  }
 
   //   ***  ***
 }
