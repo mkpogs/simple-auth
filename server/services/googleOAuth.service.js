@@ -132,6 +132,36 @@ class GoogleOAuthService {
     }
   }
 
+  //   *** Validate Google OAuth configuration ***
+  validateConfiguration() {
+    const required = ["CLIENT_URL", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"];
+    const missing = required.filter((key) => !process.env[key]);
+
+    if (missing.length > 0) {
+      throw new AppError(
+        `Missing Google OAuth configuration: ${missing.join(", ")}`,
+        500
+      );
+    }
+    return true;
+  }
+
+  //   *** Parse Google OAuth error ***
+  parseGoogleError(error) {
+    if (error.code === "invalid_grant") {
+      return "Authorization code has expired or is invalid.";
+    }
+    if (error.code === "unauthorized_client") {
+      return "Invalid Client Credentials.";
+    }
+    if (error.code === "access_denied") {
+      return "User denied access.";
+    }
+    return error.message || "Google OAuth error occurred.";
+  }
+
+  //   ***  ***
+
   //   ***  ***
 }
 
