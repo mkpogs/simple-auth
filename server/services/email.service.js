@@ -11,7 +11,7 @@ const CLIENT_URL = process.env.CLIENT_URL;
 class EmailService {
   constructor() {
     // Initialize email transporter
-    this.transporter = nodemailer.createTransport();
+    this.transporter = this.createTransporter();
   }
 
   //   *** Create email transporter ***

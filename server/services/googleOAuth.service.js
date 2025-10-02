@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import AppError from "../utils/appError.util.js";
+import AppError from "../utils/AppError.js";
 
 const CLIENT_URL = process.env.CLIENT_URL;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -56,7 +56,7 @@ class GoogleOAuthService {
         email: data.email,
         name: data.name,
         avatar: data.picture,
-        isVerfied: data.verified_email || true, // Google accounts are pre-verified
+        isVerified: data.verified_email || true, // Google accounts are pre-verified
       };
     } catch (error) {
       console.error("Error getting Google user profile:", error);
