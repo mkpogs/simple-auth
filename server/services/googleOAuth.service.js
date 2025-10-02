@@ -36,6 +36,34 @@ class GoogleOAuthService {
     }
   }
 
+  //   *** Get user profile from Google using authorization code ***
+  async getUserProfile(code) {
+    try {
+      // Exchange authorization code for access token
+      const { tokens } = await this.oauth2Client.getToken(code);
+      this.oauth2Client.setCredentials(tokens);
+
+      // Fetch user profile information
+      const oauth2 = google.oauth2({
+        auth: this.oauth2Client,
+        version: "v2",
+      });
+
+      const { data } = await oauth2.userinfo.get();
+
+      return {
+        googleId: data.id,
+        email: data.email,
+        name: data.name,
+        avatar: data.picture,
+        isVerfied: data.verified_email || true, // Google accounts are pre-verified
+      };
+    } catch (error) {
+      console.error("Error getting Google user profile:", error);
+      throw new AppError("Failed to get Google user profile", 500);
+    }
+  }
+
   //   ***  ***
   // Fn() {
   //   try{
@@ -45,8 +73,6 @@ class GoogleOAuthService {
   //     throw new AppError('', 500);
   //   }
   // }
-
-  //   ***  ***
 
   //   ***  ***
 
