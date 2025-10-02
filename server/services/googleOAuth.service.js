@@ -64,15 +64,28 @@ class GoogleOAuthService {
     }
   }
 
-  //   ***  ***
-  // Fn() {
-  //   try{
+  //   *** Verify Google ID token (alternative method) ***
+  async verifyIdToken(idToken) {
+    try {
+      const ticket = await this.oauth2Client.verifyIdToken({
+        idToken,
+        audience: GOOGLE_CLIENT_ID,
+      });
 
-  //   } catch (error) {
-  //     console.error();
-  //     throw new AppError('', 500);
-  //   }
-  // }
+      const payload = ticket.getPayload();
+
+      return {
+        googleId: payload["sub"],
+        email: payload["email"],
+        name: payload["name"],
+        avatar: payload["picture"],
+        isVerified: payload["email_verified"] || true,
+      };
+    } catch (error) {
+      console.error("Error verifying Google ID token:", error);
+      throw new AppError("Invalid Google ID Token", 500);
+    }
+  }
 
   //   ***  ***
 
