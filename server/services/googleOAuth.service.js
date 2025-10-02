@@ -14,6 +14,47 @@ class GoogleOAuthService {
       GOOGLE_REDIRECT_URL
     );
   }
+
+  //   *** Generate Google OAuth URL ***
+  generateAuthUrl() {
+    try {
+      const scopes = [
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email",
+      ];
+
+      const authURL = this.oauth2Client.generateAuthUrl({
+        access_type: "offline",
+        scope: scopes,
+        prompt: "consent",
+      });
+
+      return authURL;
+    } catch (error) {
+      console.error(`Error generating Google OAuth URL:`, error);
+      throw new AppError("", 500);
+    }
+  }
+
+  //   ***  ***
+  // Fn() {
+  //   try{
+
+  //   } catch (error) {
+  //     console.error();
+  //     throw new AppError('', 500);
+  //   }
+  // }
+
+  //   ***  ***
+
+  //   ***  ***
+
+  //   ***  ***
+
+  //   ***  ***
+
+  //   ***  ***
 }
 
 export default new GoogleOAuthService();
