@@ -232,7 +232,17 @@ class EmailService {
     `;
   }
 
-  //   ***  ***
+  //   *** Test email configuration ***
+  async testConnection() {
+    try {
+      await this.transporter.verify();
+      console.log("✅ Email service is ready");
+      return true;
+    } catch (error) {
+      console.error("❌ Email service failed:", error);
+      return false;
+    }
+  }
 }
 
 export default new EmailService();
