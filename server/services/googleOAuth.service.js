@@ -160,7 +160,13 @@ class GoogleOAuthService {
     return error.message || "Google OAuth error occurred.";
   }
 
-  //   ***  ***
+  //   *** Generate state parameter for CSRF protection ***
+  generateStateParameter() {
+    return (
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15)
+    );
+  }
 
   //   ***  ***
 }
