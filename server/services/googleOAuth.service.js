@@ -168,7 +168,47 @@ class GoogleOAuthService {
     );
   }
 
-  //   ***  ***
+  //   *** Verify state parameter ***
+  verifyStateParameter(receivedState, expectedState) {
+    return receivedState === expectedState;
+  }
+
+  //   *** Get Google OAuth scopes ***
+  getRequiredScopes() {
+    return [
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ];
+  }
+
+  //   *** CHeck if user has required permissions ***
+  async checkUserPermissions(accessToken) {
+    try {
+      this.oauth2Client.setCredentials({
+        access_token: accessToken,
+      });
+
+      const oauth2 = google.oauth2({
+        version: "v2",
+        auth: this.oauth2Client,
+      });
+
+      const { data } = await oauth2.userinfo.get();
+
+      return {
+        hasEmail: !!data.email,
+        hasProfile: !!data.name,
+        emailVerified: data.verified_email,
+      };
+    } catch (error) {
+      console.error("Error checking user permissions:", error);
+      return {
+        hasEmail: false,
+        hasProfile: false,
+        emailVerified: false,
+      };
+    }
+  }
 }
 
 export default new GoogleOAuthService();
