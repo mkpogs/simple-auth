@@ -32,7 +32,7 @@ class GoogleOAuthService {
       return authURL;
     } catch (error) {
       console.error(`Error generating Google OAuth URL:`, error);
-      throw new AppError("", 500);
+      throw new AppError("Failed to generate Google Auth URL", 500);
     }
   }
 
@@ -60,7 +60,7 @@ class GoogleOAuthService {
       };
     } catch (error) {
       console.error("Error getting Google user profile:", error);
-      throw new AppError("Failed to get Google user profile", 500);
+      throw new AppError("Failed to get Google user profile", 400);
     }
   }
 
@@ -83,11 +83,24 @@ class GoogleOAuthService {
       };
     } catch (error) {
       console.error("Error verifying Google ID token:", error);
-      throw new AppError("Invalid Google ID Token", 500);
+      throw new AppError("Invalid Google ID Token", 400);
     }
   }
 
-  //   ***  ***
+  //   *** Refresh Google Access Token ***
+  async refreshAccessToken(refreshToken) {
+    try {
+      this.oauth2Client.setCredentials({
+        refresh_token: refreshToken,
+      });
+
+      const { credentials } = await this.oauth2Client.refreshAccessToken();
+      return credentials;
+    } catch (error) {
+      console.error("Error Refreshing Google access token:", error);
+      throw new AppError("Failed to refresh Google access token", 400);
+    }
+  }
 
   //   ***  ***
 
