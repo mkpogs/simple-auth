@@ -11,12 +11,12 @@ const CLIENT_URL = process.env.CLIENT_URL;
 class EmailService {
   constructor() {
     // Initialize email transporter
-    this.transporter = this.createTransporter();
+    this.transporter = this.createTransport();
   }
 
   //   *** Create email transporter ***
-  createTransporter() {
-    return nodemailer.createTransporter({
+  createTransport() {
+    return nodemailer.createTransport({
       host: EMAIL_HOST,
       port: parseInt(EMAIL_PORT) || 587,
       secure: false, // true for 465, false for other ports
