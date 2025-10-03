@@ -6,7 +6,7 @@ const router = express.Router();
 // ===== CENTRALIZED ROUTES =====
 
 // Health check route
-router.get("health", (req, res) => {
+router.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
     message: "Server is running perfectly! 🚀",

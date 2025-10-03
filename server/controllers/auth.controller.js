@@ -80,7 +80,7 @@ export const register = async (req, res, next) => {
     await emailService.sendOTPEmail(newUser.email, otp, newUser.name);
 
     // Step 10: Return success response (don't send sensitive data)
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message:
         "Registration successful! Please check your email for verification code,",
@@ -136,7 +136,7 @@ export const verifyOTP = async (req, res, next) => {
     }
 
     // Step 4: Find user by email
-    const user = await User.findByEmail(email);
+    const user = await User.findByEmail(email).select("+otpCode +otpExpiresAt");
     if (!user) {
       return next(new AppError("User not found.", 404));
     }
@@ -146,8 +146,8 @@ export const verifyOTP = async (req, res, next) => {
       return next(new AppError("Account is already verified.", 400));
     }
 
-    // Step 6: Verify OTP
-    if (!user.verifyOTP(otp)) {
+    // Step 6: Verify OTP (convert to string to handle both number and string inputs)
+    if (!user.verifyOTP(String(otp))) {
       return next(new AppError("Invalid or Expired OTP.", 400));
     }
 

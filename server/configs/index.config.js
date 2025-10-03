@@ -8,7 +8,7 @@ import {
 } from "./security.config.js";
 import basicExpressConfig from "./express.config.js";
 
-const expressSetupMiddleware = (app) => {
+export const expressSetupMiddleware = (app) => {
   // Security Middlewares (order matters!)
   app.use(helmetConfig);
   app.use(corsConfig);
@@ -22,5 +22,3 @@ const expressSetupMiddleware = (app) => {
   //   Rate Limiting (Apply to API routes)
   app.use("/api/", generalLimiter);
 };
-
-export default expressSetupMiddleware;

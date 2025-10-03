@@ -1,7 +1,6 @@
 import express from "express";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import e from "express";
 
 const basicExpressConfig = (app) => {
   // Body parsing middleware
@@ -14,14 +13,8 @@ const basicExpressConfig = (app) => {
   // Compression middleware to reduce response sizes
   app.use(compression());
 
-  // Health check route
-  app.get("api/health", (req, res) => {
-    res.json({
-      message: "Server is running",
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || "development",
-    });
-  });
+  // NOTE: Health check route is now in index.routes.js, not here
+  // This keeps middleware and routes separated properly
 };
 
 export default basicExpressConfig;
