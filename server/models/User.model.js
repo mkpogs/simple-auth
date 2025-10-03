@@ -178,11 +178,6 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   return false;
 };
 
-// *** Check if user's password is expired ***
-userSchema.methods.isPasswordExpired = function () {
-  return this.passwordExpiresAt < new Date();
-};
-
 // *** Add Refresh Token ***
 userSchema.methods.addRefreshToken = async function (token) {
   this.refreshTokens.push({ token });
