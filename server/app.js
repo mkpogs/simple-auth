@@ -5,6 +5,7 @@ import {
   notFoundHandler,
   globalErrorHandler,
 } from "./middlewares/errorHandler.middleware.js";
+import allRoutes from "./routes/index.routes.js";
 
 const app = express();
 
@@ -12,7 +13,7 @@ const app = express();
 expressSetupMiddleware(app);
 
 // Mounting all Routes
-// app.use("/api", allRoutes); // We'll uncomment this when we have routes
+app.use("/api", allRoutes);
 
 // Handle 404 errors
 app.use(notFoundHandler);
