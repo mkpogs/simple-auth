@@ -1,4 +1,3 @@
-import { Auth } from "googleapis";
 import User from "../models/User.model.js";
 import {
   jwtService,
@@ -111,4 +110,131 @@ export const register = async (req, res, next) => {
 
   // Handle Generic Error
   next(new AppError("Registration failed. Please try again.", 500));
+};
+
+// ========== OTP VERIFICATION ==========
+/**
+ * Verify user's email with OTP code
+ * POST /api/auth/verify-otp
+ * Body: { email, otp }
+ **/
+export const verifyOTP = async (req, res, next) => {
+  try {
+    // Step 1: Extract data from request body
+    const { email, otp } = req.body;
+
+    // Step 2: Validate required fields
+    if (!email || !otp) {
+      return next(new AppError("Email and OTP are required.", 400));
+    }
+
+    // Step 3: Validate OTP format
+    if (!otpService.isValidOTPFormat(otp)) {
+      return next(
+        new AppError("Invalid OTP format. OTP must be 6 digits", 400)
+      );
+    }
+
+    // Step 4: Find user by email
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return next(new AppError("User not found.", 404));
+    }
+
+    // Step 5: Validate if User is already verified
+    if (user.isVerified) {
+      return next(new AppError("Account is already verified.", 400));
+    }
+
+    // Step 6: Verify OTP
+    if (!user.verifyOTP(otp)) {
+      return next(new AppError("Invalid or Expired OTP.", 400));
+    }
+
+    // Step 7: Update user as verified
+    user.isVerified = true;
+    user.clearOTP(); // Remove OTP data
+    user.lastLogin = new Date(); // Update last login
+    await user.save();
+
+    // Step 8: Generate JWT tokens
+    const tokens = jwtService.generateTokenPair(user);
+
+    // Step 9: Add refresh token to user
+    user.addRefreshToken(tokens.refreshToken);
+    await user.save();
+
+    // Step 10: Send Welcome Email (non-blocking)
+    emailService
+      .sendWelcomeEmail(user.email, user.name)
+      .catch((err) => console.error("Welcome email failed:", err));
+
+    // Step 11: Return success response with tokens
+    res.status(200).json({
+      success: true,
+      message: "Email verified successfully! Welcome aboard.",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          isVerified: user.isVerified,
+          avatar: user.avatar,
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("OTP Verification Error:", error);
+    next(new AppError("OTP verification failed. Please try again.", 500));
+  }
+};
+
+// ========== RESEND OTP ==========
+/**
+ * Resend OTP code to user's email
+ * POST /api/auth/resend-otp
+ * Body: { email }
+ **/
+export const resendOTP = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // Validate required fields
+    if (!email) {
+      return next(new AppError("Email is required", 400));
+    }
+
+    // Find user by email
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Check if user is already verified
+    if (user.isVerified) {
+      return next(new AppError("Account is already verified", 400));
+    }
+
+    // Generate new OTP
+    const otp = user.generateOTP();
+    await user.save();
+
+    // Send OTP email
+    await emailService.sendOTPEmail(email, otp, user.name);
+
+    res.status(200).json({
+      success: true,
+      message: "New OTP sent to your email successfully.",
+      data: {
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    console.error("Resend OTP error:", error);
+    next(new AppError("Failed to resend OTP. Please try again.", 500));
+  }
 };
