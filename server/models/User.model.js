@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const userSchema = new mongoose.Schema(
   {
@@ -226,6 +227,24 @@ userSchema.methods.verifyOTP = function (candidateOTP) {
 userSchema.methods.clearOTP = function () {
   this.otpCode = undefined;
   this.otpExpiresAt = undefined;
+};
+
+// *** Create Password Reset Token ***
+userSchema.methods.createPasswordResetToken = function () {
+  // Generate a random token
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  // Hash the token and store it in the database
+  this.resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  // Set token expiry (10 minutes from now)
+  this.resetPasswordExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+  // Return the plain token (not hashed) to send via email
+  return resetToken;
 };
 
 // ==================== STATIC METHODS ====================
