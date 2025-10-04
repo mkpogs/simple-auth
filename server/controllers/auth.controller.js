@@ -345,3 +345,53 @@ export const logout = async (req, res, next) => {
     next(new AppError("Logout failed. Please try again.", 500));
   }
 };
+
+// ========== REFRESH ACCESS TOKEN ==========
+/**
+ * User Logout (Invalidate refresh token)
+ * POST /api/auth/refresh-token
+ * Body: { refreshToken }
+ **/
+export const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    // Validate if there is a refresh token
+    if (!refreshToken) {
+      return next(new AppError("Refresh token is required", 400));
+    }
+
+    // Verify refresh token
+    const decoded = jwtService.verifyRefreshToken(refreshToken);
+
+    // Find User
+    const user = await User.findById(decoded.id).select("+refreshTokens");
+    if (!user) {
+      return next(new AppError("Invalid Refresh Token", 401));
+    }
+
+    // Check if refresh token exists in user's tokens
+    const tokenExists = user.refreshTokens.some(
+      (token) => token.token === refreshToken
+    );
+
+    if (!tokenExists) {
+      return next(new AppError("Invalid Refresh Token", 401));
+    }
+
+    // Generate new access token
+    const newAccessToken = jwtService.generateAccessToken(user);
+
+    // Return a response
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      data: {
+        accessToken: newAccessToken,
+      },
+    });
+  } catch (error) {
+    console.error("Refresh Token Error:", error);
+    next(new AppError("Token refresh failed.", 401));
+  }
+};
