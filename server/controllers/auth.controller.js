@@ -395,3 +395,46 @@ export const refreshToken = async (req, res, next) => {
     next(new AppError("Token refresh failed.", 401));
   }
 };
+
+// ========== FORGOT PASSWORD ==========
+/**
+ * Request password reset
+ * POST /api/auth/forgot-password
+ * Body: { email }
+ **/
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // Validate required fields
+    if (!email) {
+      return next(new AppError("Email is required", 400));
+    }
+
+    // Find user by email
+    const user = await User.findByEmail(email);
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Generate reset token
+    const resetToken = user.createPasswordResetToken();
+    await user.save();
+
+    // Send reset email
+    await emailService.sendPasswordResetEmail(
+      user.email,
+      resetToken,
+      user.name
+    );
+
+    // Return response
+    return res.status(200).json({
+      success: true,
+      message: "Password reset link sent to your email.",
+    });
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    next(new AppError("Failed to sent reset email.", 500));
+  }
+};
