@@ -7,6 +7,7 @@ import {
   logout,
   refreshToken,
   forgotPassword,
+  resetPassword,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
@@ -36,5 +37,45 @@ router.post("/verify-otp", verifyOTP);
  * @body    { email }
  */
 router.post("/resend-otp", resendOTP);
+
+/**
+ * @route   POST /api/auth/login
+ * @desc    Users Login
+ * @access  Public
+ * @body    { email, password }
+ */
+router.post("/login", login);
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Logout user and invalidate refresh token
+ * @access  Public
+ * @body    { refreshToken }
+ */
+router.post("/logout", logout);
+
+/**
+ * @route   POST /api/auth/refresh-token
+ * @desc    Refresh Access Token
+ * @access  Public
+ * @body    { refreshToken }
+ */
+router.post("/refresh-token", refreshToken);
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset
+ * @access  Public
+ * @body    { email }
+ */
+router.post("/forgot-password", forgotPassword);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password with token
+ * @access  Public
+ * @body    { token, password, confirmPassword }
+ */
+router.post("/reset-password", resetPassword);
 
 export default router;

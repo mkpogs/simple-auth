@@ -349,7 +349,7 @@ export const logout = async (req, res, next) => {
 
 // ========== REFRESH ACCESS TOKEN ==========
 /**
- * User Logout (Invalidate refresh token)
+ * Refresh Access Token
  * POST /api/auth/refresh-token
  * Body: { refreshToken }
  **/
