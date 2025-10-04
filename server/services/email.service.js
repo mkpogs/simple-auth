@@ -106,6 +106,26 @@ class EmailService {
     }
   }
 
+  //   *** Send password changed notification email ***
+  async sendPasswordChangedEmail(email, name) {
+    try {
+      const mailOptions = {
+        from: EMAIL_FROM,
+        to: email,
+        subject: "Password Changed Successfully",
+        html: this.getPasswordChangedEmailTemplate(name),
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log(`Password changed email sent to ${email}: ${info.messageId}`);
+      return info;
+    } catch (error) {
+      console.error("Error sending password changed email:", error);
+      // Don't throw error for notification email - it's not critical
+      console.log("Password changed email failed, but continuing...");
+    }
+  }
+
   //   ===== Email Templates =====
   //   *** OTP Email Template ***
   getOTPEmailTemplate(name, otp) {
@@ -230,6 +250,39 @@ class EmailService {
         </div>
       </div>
     `;
+  }
+
+  //   *** Password changed email Template ***
+  getPasswordChangedEmailTemplate(name) {
+    return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #28a745; margin-bottom: 10px;">Password Changed Successfully</h1>
+        <p style="color: #666; font-size: 18px;">Hello ${name},</p>
+      </div>
+      
+      <div style="background-color: #f8f9fa; padding: 30px; border-radius: 10px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.5;">
+          🔒 Your password has been successfully changed. If you didn't make this change, please contact our support team immediately.
+        </p>
+      </div>
+      
+      <div style="color: #666; font-size: 14px; line-height: 1.5;">
+        <p><strong>Security Tips:</strong></p>
+        <ul style="margin-left: 20px;">
+          <li>Keep your password secure and don't share it</li>
+          <li>Use a unique password for your account</li>
+          <li>Consider enabling two-factor authentication</li>
+        </ul>
+      </div>
+      
+      <div style="margin-top: 30px; text-align: center;">
+        <p style="color: #999; font-size: 12px;">
+          If you didn't request this change, please contact our support team.
+        </p>
+      </div>
+    </div>
+  `;
   }
 
   //   *** Test email configuration ***
