@@ -307,3 +307,41 @@ export const login = async (req, res, next) => {
     next(new AppError("Login failed. Please try again.", 500));
   }
 };
+
+// ========== USER LOGOUT ==========
+/**
+ * User Logout (Invalidate refresh token)
+ * POST /api/auth/logout
+ * Body: { refreshToken }
+ **/
+export const logout = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    // Validate if there is a refresh token
+    if (!refreshToken) {
+      return next(new AppError("Refresh token is required", 400));
+    }
+
+    // Find user by refresh token
+    const user = await User.findOne({ "refreshTokens.token": refreshToken });
+
+    if (user) {
+      // Remove specific refresh token
+      user.refreshTokens = user.refreshTokens.filter(
+        (token) => token.token !== refreshToken
+      );
+
+      await user.save();
+    }
+
+    // Return response
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Logout Error:", error);
+    next(new AppError("Logout failed. Please try again.", 500));
+  }
+};
