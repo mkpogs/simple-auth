@@ -363,10 +363,17 @@ export const refreshToken = async (req, res, next) => {
     }
 
     // Verify refresh token
-    const decoded = jwtService.verifyRefreshToken(refreshToken);
+    let decoded;
+    try {
+      decoded = jwtService.verifyRefreshToken(refreshToken);
+      console.log("JWT Verification successful:", decoded);
+    } catch (jwtError) {
+      console.log("JWT Verification failed:", jwtError.message);
+      return next(new AppError("Invalid or expired refresh token", 401));
+    }
 
     // Find User
-    const user = await User.findById(decoded.id).select("+refreshTokens");
+    const user = await User.findById(decoded.userId);
     if (!user) {
       return next(new AppError("Invalid Refresh Token", 401));
     }
@@ -380,8 +387,12 @@ export const refreshToken = async (req, res, next) => {
       return next(new AppError("Invalid Refresh Token", 401));
     }
 
-    // Generate new access token
-    const newAccessToken = jwtService.generateAccessToken(user);
+    // Generate new access token - Create payload object first
+    const payload = {
+      userId: user._id,
+      email: user.email,
+    };
+    const newAccessToken = jwtService.generateAccessToken(payload);
 
     // Return a response
     return res.status(200).json({
@@ -393,6 +404,15 @@ export const refreshToken = async (req, res, next) => {
     });
   } catch (error) {
     console.error("Refresh Token Error:", error);
+
+    // Handle JWT errors specifically
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError"
+    ) {
+      return next(new AppError("Invalid or expired refresh token", 401));
+    }
+
     next(new AppError("Token refresh failed.", 401));
   }
 };

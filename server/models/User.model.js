@@ -177,13 +177,16 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
 };
 
 // *** Add Refresh Token ***
-userSchema.methods.addRefreshToken = async function (token) {
+userSchema.methods.addRefreshToken = function (token) {
   this.refreshTokens.push({ token });
 
   // Keep Only last 5 refresh tokens (security measure)
   if (this.refreshTokens.length > 5) {
     this.refreshTokens = this.refreshTokens.slice(-5);
   }
+
+  // Return this for method chaining
+  return this;
 };
 
 // *** Remove Specific Refresh Token ***
