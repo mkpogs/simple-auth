@@ -3,6 +3,10 @@ import {
   register,
   verifyOTP,
   resendOTP,
+  login,
+  logout,
+  refreshToken,
+  forgotPassword,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();

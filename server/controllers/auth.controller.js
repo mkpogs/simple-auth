@@ -1,4 +1,5 @@
 import User from "../models/User.model.js";
+import crypto from "crypto";
 import {
   jwtService,
   emailService,
@@ -436,5 +437,100 @@ export const forgotPassword = async (req, res, next) => {
   } catch (error) {
     console.error("Forgot Password Error:", error);
     next(new AppError("Failed to sent reset email.", 500));
+  }
+};
+
+// ========== RESET PASSWORD ==========
+/**
+ * Reset password with token
+ * POST /api/auth/reset-password
+ * Body: { token, password, confirmPassword }
+ **/
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { token, password, confirmPassword } = req.body;
+
+    // Validate required fields
+    if (!token || !password || !confirmPassword) {
+      return next(new AppError("All fields are required", 400));
+    }
+
+    // Validate password match
+    if (password !== confirmPassword) {
+      return next(new AppError("Passwords do not match", 400));
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return next(
+        new AppError("Password must be at least 8 characters long", 400)
+      );
+    }
+
+    // Hash the token (since we store hashed tokens)
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    // Find user by reset token and check if token is not expired
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() },
+    }).select("+password");
+
+    if (!user) {
+      return next(new AppError("Token is invalid or has expired", 400));
+    }
+
+    // Check if user is verified
+    if (!user.isVerified) {
+      return next(new AppError("Please verify your email first", 401));
+    }
+
+    // Update password
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    user.passwordChangedAt = new Date();
+
+    // Save user (password will be hashed by pre-save middleware)
+    await user.save();
+
+    // Invalidate all refresh tokens for security
+    user.refreshTokens = [];
+    await user.save();
+
+    // Generate new tokens
+    const tokens = jwtService.generateTokenPair(user);
+
+    // Add new refresh token
+    user.addRefreshToken(tokens.refreshToken);
+    await user.save();
+
+    // Send password changed notification email (non-blocking)
+    emailService
+      .sendPasswordChangedEmail(user.email, user.name)
+      .catch((err) => console.error("Password changed email failed:", err));
+
+    // Return success response
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successful! You are now logged in.",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          isVerified: user.isVerified,
+          avatar: user.avatar,
+          passwordChangedAt: user.passwordChangedAt,
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    next(new AppError("Password reset failed. Please try again.", 500));
   }
 };
