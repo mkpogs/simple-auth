@@ -238,3 +238,72 @@ export const resendOTP = async (req, res, next) => {
     next(new AppError("Failed to resend OTP. Please try again.", 500));
   }
 };
+
+// ========== USER LOGIN ==========
+/**
+ * User Login with Email and Password
+ * POST /api/auth/login
+ * Body: { email, password }
+ **/
+export const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      return next(new AppError("Email and Password are required", 400));
+    }
+
+    // Find user and include password field
+    const user = await User.findByEmail(email).select("+password");
+    if (!user) {
+      return next(new AppError("Invalid email or password", 401));
+    }
+
+    // Validate if user is verified
+    if (!user.isVerified) {
+      return next(
+        new AppError("Account not verified. Please verify your email.", 401)
+      );
+    }
+
+    // Check password
+    if (!(await user.comparePassword(password))) {
+      return next(new AppError("Invalid email or password", 401));
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate Tokens
+    const tokens = jwtService.generateTokenPair(user);
+
+    // Add refresh token to user
+    user.addRefreshToken(tokens.refreshToken);
+    await user.save();
+
+    // Return response with tokens
+    return res.status(200).json({
+      success: true,
+      message: "Login successful!",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          isVerified: user.isVerified,
+          avatar: user.avatar,
+          lastLogin: user.lastLogin,
+        },
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Login Error:", error);
+    next(new AppError("Login failed. Please try again.", 500));
+  }
+};
