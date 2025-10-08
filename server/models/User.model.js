@@ -205,9 +205,16 @@ userSchema.index({ resetPasswordToken: 1 });
 userSchema.index({ "refreshTokens.token": 1 });
 
 // ==================== VIRTUALS ====================
-// Virtual field to check if password is expired
+// *** Virtual field to check if password is expired ***
 userSchema.virtual("isPasswordExpired").get(function () {
   return this.passwordExpiresAt < new Date();
+});
+
+// *** Virtual field to check if account is locked ***
+userSchema.virtual(isLocked).get(function () {
+  return !!(
+    this.accountLockout.lockUntil && this.accountLockout.lockUntil > Date.now()
+  );
 });
 
 // ==================== MIDDLEWARES ====================
