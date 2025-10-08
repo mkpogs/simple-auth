@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { count, time } from "console";
-import { type } from "os";
 
 const userSchema = new mongoose.Schema(
   {
@@ -178,18 +176,6 @@ const userSchema = new mongoose.Schema(
       backupCodes: [String],
       lastUsed: Date,
     },
-
-    // Add this virtual field for account lock status
-    isLocked: {
-      type: Boolean,
-      default: false,
-      get: function () {
-        return !!(
-          this.accountLockout.lockUntil &&
-          this.accountLockout.lockUntil > Date.now()
-        );
-      },
-    },
   },
   {
     timestamps: true, // Automatically manage createdAt and updatedAt fields
@@ -211,7 +197,7 @@ userSchema.virtual("isPasswordExpired").get(function () {
 });
 
 // *** Virtual field to check if account is locked ***
-userSchema.virtual(isLocked).get(function () {
+userSchema.virtual("isLocked").get(function () {
   return !!(
     this.accountLockout.lockUntil && this.accountLockout.lockUntil > Date.now()
   );
@@ -340,6 +326,63 @@ userSchema.methods.createPasswordResetToken = function () {
 
   // Return the plain token (not hashed) to send via email
   return resetToken;
+};
+
+// *** Record Login Attempt ***
+userSchema.methods.recordLogin = function (
+  req,
+  success = true,
+  failureReason = null
+) {
+  // Add Login Record
+  this.loginHistory.push({
+    ip: req.ip || req.connection.remoteAddress,
+    userAgent: req.get("User-Agent"),
+    success,
+    failureReason,
+    timestamp: new Date(),
+  });
+
+  // Keep only last 20 login attempts for performance
+  if (this.loginHistory.length > 20) {
+    this.loginHistory = this.loginHistory.slice(-20);
+  }
+
+  return this;
+};
+
+// *** Handle Failed Login Attempt ***
+userSchema.methods.handleFailedLogin = function () {
+  this.accountLockout.failedAttempts += 1;
+
+  // Lock account after 5 failed attempts for  30 minutes
+  if (this.accountLockout.failedAttempts >= 5) {
+    this.accountLockout.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+  }
+
+  return this;
+};
+
+// *** Reset Failed Login Attempts ***
+userSchema.methods.resetFailedAttempts = function () {
+  this.accountLockout.failedAttempts = 0;
+  this.accountLockout.lockUntil = undefined;
+  return this;
+};
+
+// *** Enable 2FA ***
+userSchema.methods.enable2FA = function () {
+  // We'll implement this when we add 2FA feature
+  this.twoFactorAuth.isEnabled = true;
+  return this;
+};
+
+// *** Disable 2FA ***
+userSchema.methods.disable2FA = function () {
+  this.twoFactorAuth.isEnabled = false;
+  this.twoFactorAuth.secret = undefined;
+  this.twoFactorAuth.backupCodes = [];
+  return this;
 };
 
 // ==================== STATIC METHODS ====================
