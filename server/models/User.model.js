@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { count, time } from "console";
+import { type } from "os";
 
 const userSchema = new mongoose.Schema(
   {
@@ -28,6 +30,31 @@ const userSchema = new mongoose.Schema(
       },
       minlength: [8, "Password must be at least 8 characters."],
       select: false, // Do not return password field by default in queries
+    },
+
+    // *** Profile Information ***
+    bio: {
+      type: String,
+      maxlength: [500, "Bio cannot exceed 500 characters."],
+      trim: true,
+      default: "",
+    },
+
+    phone: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function (phone) {
+          if (!phone) return true; // Allow empty phone
+          return /^[\+]?[1-9][\d]{0,15}$/.test(phone);
+        },
+        message: "Please provide a valid phone number.",
+      },
+    },
+
+    location: {
+      country: { type: String, trim: true },
+      city: { type: String, trim: true },
     },
 
     // *** Email Verification ***
@@ -101,6 +128,67 @@ const userSchema = new mongoose.Schema(
     },
     lastLogin: {
       type: Date,
+    },
+
+    // *** Account Management ***
+    role: {
+      type: String,
+      enum: {
+        values: ["user", "moderator", "admin"],
+        message: "Role must be either 'user', 'moderator', or 'admin'.",
+      },
+      default: "user",
+    },
+
+    accountStatus: {
+      type: String,
+      enum: {
+        values: ["active", "suspended", "banned", "pending"],
+        message: "Invalid account status",
+      },
+      default: "active",
+    },
+
+    // *** Security and Tracking ***
+    loginHistory: [
+      {
+        timestamp: { type: Date, default: Date.now },
+        ip: { type: String },
+        userAgent: { type: String },
+        location: {
+          country: { type: String, trim: true },
+          city: { type: String, trim: true },
+        },
+        success: { type: Boolean, default: true },
+        failureReason: { type: String },
+      },
+    ],
+    accountLockout: {
+      failedAttempts: { type: Number, default: 0 },
+      lockUntil: Date,
+    },
+
+    // *** 2FA (Email-Based - FREE!) ***
+    twoFactorAuth: {
+      isEnabled: {
+        type: Boolean,
+        default: false,
+      },
+      secret: String,
+      backupCodes: [String],
+      lastUsed: Date,
+    },
+
+    // Add this virtual field for account lock status
+    isLocked: {
+      type: Boolean,
+      default: false,
+      get: function () {
+        return !!(
+          this.accountLockout.lockUntil &&
+          this.accountLockout.lockUntil > Date.now()
+        );
+      },
     },
   },
   {
