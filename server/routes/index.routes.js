@@ -33,6 +33,12 @@ router.get("/", (req, res) => {
         verifyOTP: "POST /api/auth/verify-otp",
         resendOTP: "POST /api/auth/resend-otp",
       },
+      users: {
+        getProfile: "GET /api/users/profile",
+        updateProfile: "PUT /api/users/profile",
+        changePassword: "PUT /api/users/change-password",
+        deleteAccount: "DELETE /api/users/account",
+      },
     },
   });
 });
