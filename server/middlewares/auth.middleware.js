@@ -24,7 +24,6 @@ export const protect = async (req, res, next) => {
 
     // 🔍 ADD DEBUGGING HERE
     console.log("🔍 Decoded JWT payload:", decoded);
-    console.log("🔍 Looking for user with ID (decoded.id):", decoded.id);
     console.log(
       "🔍 Looking for user with ID (decoded.userId):",
       decoded.userId

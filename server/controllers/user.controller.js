@@ -251,8 +251,10 @@ export const changePassword = async (req, res, next) => {
 
     if (currentPassword === newPassword) {
       return next(
-        "New password cannot be the same as the current password",
-        400
+        new AppError(
+          "New password cannot be the same as the current password",
+          400
+        )
       );
     }
 
@@ -274,11 +276,13 @@ export const changePassword = async (req, res, next) => {
     user.password = newPassword;
     user.passwordChangedAt = new Date();
     user.refreshTokens = []; // Invalidate all refresh tokens (logout other devices for security)
+    console.log("💾 About to save user with new password...");
     await user.save();
+    console.log("✅ Password updated successfully");
     console.log("✅ Password updated successfully for user:", user.email);
 
     // Step 6: Generate new JWT tokens for current session
-    const tokens = jwtService.generateTokenPairs(user);
+    const tokens = jwtService.generateTokenPair(user);
     user.addRefreshToken(tokens.refreshToken);
     await user.save();
 
@@ -295,7 +299,12 @@ export const changePassword = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("❌ Change Password Error:", error);
+    // console.error("❌ Change Password Error:", error);
+    console.error("❌ Detailed Error:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
     next(new AppError("Failed to change password", 500));
   }
 };
