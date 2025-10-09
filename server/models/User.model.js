@@ -38,15 +38,17 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
-    phone: {
+    mobile: {
       type: String,
       trim: true,
       validate: {
-        validator: function (phone) {
-          if (!phone) return true; // Allow empty phone
-          return /^[\+]?[1-9][\d]{0,15}$/.test(phone);
+        validator: function (mobile) {
+          if (!mobile) return true; // Allow empty mobile
+          // Philippine mobile format: 11 digits starting with 0
+          return /^0\d{10}$/.test(mobile);
         },
-        message: "Please provide a valid phone number.",
+        message:
+          "Please provide a valid Philippine mobile number (11 digits starting with 0).",
       },
     },
 

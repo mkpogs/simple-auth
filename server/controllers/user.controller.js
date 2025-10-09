@@ -49,7 +49,7 @@ export const getProfile = async (req, res, next) => {
         name: user.name,
         email: user.email,
         bio: user.bio,
-        phone: user.phone,
+        mobile: user.mobile,
         avatar: user.avatar,
         location: user.location,
 
@@ -86,7 +86,7 @@ export const getProfile = async (req, res, next) => {
  * REAL-WORLD USE: Like updating your profile on social media or e-commerce sites
  *
  * WHAT IT DOES:
- *  1. Validates input data (name, bio, phone, location, avatar)
+ *  1. Validates input data (name, bio, mobile, location, avatar)
  *  2. Updates allowed fields only
  *  3. Returns updated profile
  *
@@ -101,7 +101,7 @@ export const updateProfile = async (req, res, next) => {
     console.log("📝 Update data received:", req.body);
 
     // Step 1: Extract allowed fields from request
-    const { name, bio, phone, location } = req.body;
+    const { name, bio, mobile, location } = req.body;
 
     // Step 2: Validate input (basic validation)
     if (name && name.trim().length < 2) {
@@ -112,8 +112,31 @@ export const updateProfile = async (req, res, next) => {
       return next(new AppError("Bio cannot exceed 500 characters", 400));
     }
 
-    if (phone && !/^[\+]?[1-9][\d]{0,15}$/.test(phone)) {
-      return next(new AppError("Please provide a valid phone number", 400));
+    // Updated mobile validation for Philippine format
+    if (mobile && !/^0\d{10}$/.test(mobile)) {
+      return next(
+        new AppError(
+          "Please provide a valid Philippine mobile number (11 digits starting with 0)",
+          400
+        )
+      );
+    }
+
+    // Validate location object
+    if (location && typeof location === "object") {
+      if (location.country && typeof location.country !== "string") {
+        return next(new AppError("Country must be a string", 400));
+      }
+      if (location.city && typeof location.city !== "string") {
+        return next(new AppError("City must be a string", 400));
+      }
+    } else if (location && typeof location !== "object") {
+      return next(
+        new AppError(
+          "Location must be an object with country and city properties",
+          400
+        )
+      );
     }
 
     // Step 3: Prepare update data (only include provided fields)
@@ -121,8 +144,16 @@ export const updateProfile = async (req, res, next) => {
 
     if (name !== undefined) updateData.name = name.trim();
     if (bio !== undefined) updateData.bio = bio.trim();
-    if (phone !== undefined) updateData.phone = phone.trim();
-    if (location !== undefined) updateData.location = location.trim();
+    if (mobile !== undefined) updateData.mobile = mobile.trim();
+
+    // Handle location object properly
+    if (location !== undefined) {
+      updateData.location = {};
+      if (location.country !== undefined)
+        updateData.location.country = location.country.trim();
+      if (location.city !== undefined)
+        updateData.location.city = location.city.trim();
+    }
 
     console.log("📊 Prepared update data:", updateData);
 
@@ -149,7 +180,7 @@ export const updateProfile = async (req, res, next) => {
           name: user.name,
           email: user.email,
           bio: user.bio,
-          phone: user.phone,
+          mobile: user.mobile,
           avatar: user.avatar,
           location: user.location,
           role: user.role,
