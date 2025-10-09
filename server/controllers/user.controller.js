@@ -268,3 +268,68 @@ export const changePassword = async (req, res, next) => {
     next(new AppError("Failed to change password", 500));
   }
 };
+
+// ===== DELETE ACCOUNT =====
+/**
+ * DELETE /api/users/account
+ *
+ * PURPOSE: Allow users to delete their own account
+ * REAL-WORLD USE: "Delete Account" option in settings
+ *
+ * WHAT IT DOES:
+ *  1. Verifies user's password (security measure)
+ *  2. Requires confirmation text
+ *  3. Permanently deletes user account
+ *
+ * SECURITY:
+ *  - Requires password confirmation
+ *  - Requires exact confirmation text
+ *  - Irreversible action
+ */
+export const deleteAccount = async (req, res, next) => {
+  try {
+    console.log("🗑️ Account deletion request for user:", req.user.id);
+
+    const { password, confirmation } = req.body;
+
+    // Step 1: Validate confirmation
+    if (confirmation !== "DELETE MY ACCOUNT") {
+      return next(
+        new AppError(
+          'Please type "DELETE MY ACCOUNT" to confirm account deletion',
+          400
+        )
+      );
+    }
+
+    if (!password) {
+      return next(new AppError("Password is required to delete account", 400));
+    }
+
+    // Step 2: Get user with password field
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) return next(new AppError("User not found", 404));
+
+    // Step 3: Verify Password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      console.log("❌ Invalid password provided for account deletion");
+      return next(new AppError("Password is incorrect", 400));
+    }
+
+    console.log("⚠️ Deleting account for user:", user.email);
+
+    // Step 4: Delete user account (hard delete)
+    await User.findByIdAndDelete(req.user.id);
+    console.log("✅ Account deleted successfully");
+
+    // Step 5: Return success response
+    return res.status(200).json({
+      success: true,
+      message: "Account deleted successfully. We're sorry to see you go!",
+    });
+  } catch (error) {
+    console.error("❌ Delete Account Error:", error);
+    next(new AppError("Failed to delete account", 500));
+  }
+};
