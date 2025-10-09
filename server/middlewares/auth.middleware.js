@@ -22,8 +22,17 @@ export const protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
+    // 🔍 ADD DEBUGGING HERE
+    console.log("🔍 Decoded JWT payload:", decoded);
+    console.log("🔍 Looking for user with ID (decoded.id):", decoded.id);
+    console.log(
+      "🔍 Looking for user with ID (decoded.userId):",
+      decoded.userId
+    );
+
     // Check if user still exists
-    const currentUser = await User.findById(decoded.id);
+    const currentUser = await User.findById(decoded.userId);
+    console.log("🔍 User found in database:", currentUser ? "Yes" : "No");
     if (!currentUser) {
       return next(new AppError("User no longer exists.", 401));
     }

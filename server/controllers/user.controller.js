@@ -22,9 +22,9 @@ import { jwtService } from "../services/index.service.js";
 export const getProfile = async (req, res, next) => {
   try {
     // Step 1: Get user ID from auth middleware (req.user comes from protect middleware)
-    console.log("🔍 Getting profile for user ID:", req.user.id);
+    console.log("🔍 Getting profile for user ID:", req.user._id);
 
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     // Step 2: Find user in database and exclude sensitive fields
     const user = await User.findById(userId).select(
@@ -97,7 +97,7 @@ export const getProfile = async (req, res, next) => {
  */
 export const updateProfile = async (req, res, next) => {
   try {
-    console.log("🔄 Updating profile for user:", req.user.id);
+    console.log("🔄 Updating profile for user:", req.user._id);
     console.log("📝 Update data received:", req.body);
 
     // Step 1: Extract allowed fields from request
@@ -119,15 +119,15 @@ export const updateProfile = async (req, res, next) => {
     // Step 3: Prepare update data (only include provided fields)
     const updateData = { updatedAt: new Date() };
 
-    if (name !== undefined) updateDate.name = name.trim();
-    if (bio !== undefined) updateDate.bio = bio.trim();
-    if (phone !== undefined) updateDate.phone = phone.trim();
-    if (location !== undefined) updateDate.location = location.trim();
+    if (name !== undefined) updateData.name = name.trim();
+    if (bio !== undefined) updateData.bio = bio.trim();
+    if (phone !== undefined) updateData.phone = phone.trim();
+    if (location !== undefined) updateData.location = location.trim();
 
     console.log("📊 Prepared update data:", updateData);
 
     // Step 4: Update user in database
-    const user = await User.findByIdAndUpdate(req.user.id, updateData, {
+    const user = await User.findByIdAndUpdate(req.user._id, updateData, {
       new: true, // Return the updated document
       runValidators: true, // Run schema validators
     }).select("-password -refreshTokens -twoFactorAuth.secret");
@@ -191,7 +191,7 @@ export const updateProfile = async (req, res, next) => {
  */
 export const changePassword = async (req, res, next) => {
   try {
-    console.log(`🔐 Password change request for user: ${req.user.id}`);
+    console.log(`🔐 Password change request for user: ${req.user._id}`);
 
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
@@ -226,7 +226,7 @@ export const changePassword = async (req, res, next) => {
     }
 
     // Step 3: Get user with password field
-    const user = await User.findById(req.user.id).select("+password");
+    const user = await User.findById(req.user._id).select("+password");
 
     if (!user) {
       return next(new AppError("User not found", 404));
@@ -288,7 +288,7 @@ export const changePassword = async (req, res, next) => {
  */
 export const deleteAccount = async (req, res, next) => {
   try {
-    console.log("🗑️ Account deletion request for user:", req.user.id);
+    console.log("🗑️ Account deletion request for user:", req.user._id);
 
     const { password, confirmation } = req.body;
 
@@ -307,7 +307,7 @@ export const deleteAccount = async (req, res, next) => {
     }
 
     // Step 2: Get user with password field
-    const user = await User.findById(req.user.id).select("+password");
+    const user = await User.findById(req.user._id).select("+password");
     if (!user) return next(new AppError("User not found", 404));
 
     // Step 3: Verify Password
@@ -320,7 +320,7 @@ export const deleteAccount = async (req, res, next) => {
     console.log("⚠️ Deleting account for user:", user.email);
 
     // Step 4: Delete user account (hard delete)
-    await User.findByIdAndDelete(req.user.id);
+    await User.findByIdAndDelete(req.user._id);
     console.log("✅ Account deleted successfully");
 
     // Step 5: Return success response
