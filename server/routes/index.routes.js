@@ -1,5 +1,6 @@
 import express from "express";
 import authRoutes from "./auth.routes.js";
+import userRoutes from "./user.routes.js";
 
 const router = express.Router();
 
@@ -15,8 +16,9 @@ router.get("/health", (req, res) => {
   });
 });
 
-// Routes
+// Route Mounting
 router.use("/auth", authRoutes);
+router.use("/users", userRoutes);
 
 // API info route
 router.get("/", (req, res) => {
