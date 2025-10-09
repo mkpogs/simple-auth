@@ -171,3 +171,100 @@ export const updateProfile = async (req, res, next) => {
     next(new AppError("Failed to update profile", 500));
   }
 };
+
+// ===== CHANGED PASSWORD (WHEN LOGGED IN) =====
+/**
+ * PUT /api/users/change-password
+ *
+ * PURPOSE: allow logged-in users to change their password
+ * REAL-WORLD USE: "Change Password" in account settings
+ *
+ * WHAT IT DOES:
+ *  1. Verifies current password
+ *  2. Validates new password
+ *  3. Updates password
+ *  4. Invalidates all refresh tokens (logout other devices)
+ *
+ * SECURITY:
+ *  - Requires current password verification
+ *  - Logs out all devices after  password change
+ */
+export const changePassword = async (req, res, next) => {
+  try {
+    console.log(`🔐 Password change request for user: ${req.user.id}`);
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Step 1: Validate Required Fields
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return next(
+        new AppError(
+          "Current password, new password, and confirm password are required",
+          400
+        )
+      );
+    }
+
+    // Step 2: Validate New Passwords
+    if (newPassword !== confirmPassword) {
+      return next(
+        new AppError("New password and confirm password do not match", 400)
+      );
+    }
+
+    if (newPassword.length < 8) {
+      return next(
+        new AppError("New password must be at least 8 characters long", 400)
+      );
+    }
+
+    if (currentPassword === newPassword) {
+      return next(
+        "New password cannot be the same as the current password",
+        400
+      );
+    }
+
+    // Step 3: Get user with password field
+    const user = await User.findById(req.user.id).select("+password");
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Step 4: Verify Current Password
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+    if (!isCurrentPasswordValid) {
+      console.log("❌ Invalid current password provided");
+      return next(new AppError("Current password is incorrect", 400));
+    }
+
+    // Step 5: Update Password
+    user.password = newPassword;
+    user.passwordChangedAt = new Date();
+    user.refreshTokens = []; // Invalidate all refresh tokens (logout other devices for security)
+    await user.save();
+    console.log("✅ Password updated successfully for user:", user.email);
+
+    // Step 6: Generate new JWT tokens for current session
+    const tokens = jwtService.generateTokenPairs(user);
+    user.addRefreshToken(tokens.refreshToken);
+    await user.save();
+
+    // Step 7: Return success response
+    return res.status(200).json({
+      success: true,
+      message:
+        "Password changed successfully. All devices have been logged out for security.",
+      data: {
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("❌ Change Password Error:", error);
+    next(new AppError("Failed to change password", 500));
+  }
+};
