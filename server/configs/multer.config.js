@@ -84,3 +84,58 @@ const documentFilter = (req, file, cb) => {
     cb(new AppError("Please upload only PDF, Word, or text files", 400), false);
   }
 };
+
+// ===== MULTER CONFIGURATIONS =====
+/**
+ * Avatar Upload Configuration
+ *
+ * SETTINGS:
+ *  - Memory Storage for image processing
+ *  - 5MB file size limit
+ *  - Image file only
+ *  - Single file upload
+ */
+export const avatarUpload = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+    files: 1, // Single file only
+  },
+  fileFilter: imageFilter,
+});
+
+/**
+ * Multiple Images Upload Configuration
+ *
+ * SETTINGS:
+ *  - Memory Storage for batch processing
+ *  - 5MB per file limit
+ *  - Maximum 10 files
+ *  - Image files only
+ */
+export const multipleImagesUpload = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 10, // Max 10 files
+  },
+  fileFilter: imageFilter,
+});
+
+/**
+ * Document Upload Configuration
+ *
+ * SETTINGS:
+ *  - Memory Storage for processing
+ *  - 10MB per file limit
+ *  - Document files only
+ *  - Single file upload
+ */
+export const documentUpload = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 1, // Single file only
+  },
+  fileFilter: documentFilter,
+});
