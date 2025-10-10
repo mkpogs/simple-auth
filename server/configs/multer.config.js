@@ -168,3 +168,34 @@ export const uploadMultipleImages = multipleImagesUpload.array("images", 10);
  * FIELD NAME: 'document'
  */
 export const uploadSingleDocument = documentUpload.single("document");
+
+// ===== ERROR HANDLING HELPER =====
+/**
+ * Handle Multer Errors
+ *
+ * WHAT IT DOES:
+ *  - Converts Multer errors to AppError instances
+ *  - Provides user-friendly error messages
+ *  - Handle file size and type errors
+ */
+export const handleMulterError = (error) => {
+  if (error instanceof multer.MulterError) {
+    switch (error.code) {
+      case "LIMIT_FILE_SIZE":
+        return new AppError(
+          "File size too large. Maximum size is 5MB for images, 10MB for documents.",
+          400
+        );
+      case "LIMIT_FILE_COUNT":
+        return new AppError("Too many files. Maximum 10 files allowed.", 400);
+      case "LIMIT_UNEXPECTED_FILE":
+        return new AppError(
+          "Unexpected file field. Please check the field name.",
+          400
+        );
+      default:
+        return new AppError("File upload error occurred.", 400);
+    }
+  }
+  return error;
+};
