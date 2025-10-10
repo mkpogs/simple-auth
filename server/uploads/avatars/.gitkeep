@@ -1,2 +1,0 @@
-# Creates file with explanatory comment
-echo "# This file ensures the directory is tracked by Git" > uploads/avatars/.gitkeep
