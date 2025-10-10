@@ -199,3 +199,39 @@ export const handleMulterError = (error) => {
   }
   return error;
 };
+
+// ===== UTILITY FUNCTIONS =====
+/**
+ * Get File Extension from MIME Type
+ *
+ * USAGE: const ext = getFileExtension(file.mimetype)
+ * RETURNS: File extension (e.g., '.jpg', '.png')
+ */
+export const getFileExtension = (mimetype) => {
+  const mimeToExt = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      ".docx",
+    "text/plain": ".txt",
+  };
+
+  return mimeToExt[mimetype] || ".bin";
+};
+
+/**
+ * Generate Unique Filename
+ *
+ * USAGE: const filename = generateUniqueFilename(userId, 'avatar', file.mimetype)
+ * FORMAT: {prefix}-{userId}-{timestamp}{extension}
+ */
+export const generateUniqueFilename = (userId, prefix, mimetype) => {
+  const timestamp = Date.now();
+  const extension = getFileExtension(mimetype);
+  return `${prefix}-${userId}-${timestamp}${extension}`;
+};
