@@ -1,6 +1,9 @@
 import "./configs/dotenv.config.js";
 import express from "express";
-import { expressSetupMiddleware } from "./configs/index.config.js";
+import {
+  expressSetupMiddleware,
+  configureStaticFiles,
+} from "./configs/index.config.js";
 import {
   notFoundHandler,
   globalErrorHandler,
@@ -11,6 +14,9 @@ const app = express();
 
 // Setup all middleware configurations
 expressSetupMiddleware(app);
+
+// Configure static file serving and create upload directories
+await configureStaticFiles(app);
 
 // Mounting all Routes
 app.use("/api", allRoutes);
