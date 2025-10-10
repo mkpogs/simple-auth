@@ -77,3 +77,39 @@ const ensureUploadDirectories = async () => {
 export const getUploadPath = (subDir = "") => {
   return path.join(process.cwd(), "uploads", subDir);
 };
+
+/**
+ * Get avatar directory path
+ * Utility function for avatar uploads
+ */
+export const getAvatarPath = () => {
+  return path.join(process.cwd(), "uploads", "avatars");
+};
+
+/**
+ * Clean up old files (utility function)
+ * Can be used for maintenance tasks
+ */
+export const cleanupOldFiles = async (directory, maxAge = 30) => {
+  try {
+    const dirPath = path.join(process.cwd(), "uploads", directory);
+    const files = await fs.readdir(dirPath);
+    const now = Date.now();
+    const maxAgeMs = maxAge * 24 * 60 * 60 * 1000; // Convert days to milliseconds
+
+    for (const file of files) {
+      if (file === ".gitkeep") continue; // Skip .gitkeep file
+
+      const filePath = path.join(dirPath, file);
+      const stats = await fs.stat(filePath);
+      const fileAge = now - stats.mtime.getTime();
+
+      if (fileAge > maxAgeMs) {
+        await fs.unlink(filePath);
+        console.log(`🗑️ Cleaned up old file: ${file}`);
+      }
+    }
+  } catch (error) {
+    console.error("❌ Cleanup failed:", error);
+  }
+};
