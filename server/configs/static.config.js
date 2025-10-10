@@ -38,3 +38,42 @@ export const configureStaticFiles = async (app) => {
     throw error;
   }
 };
+
+/**
+ * Create upload directories if they don't exist
+ *
+ * DIRECTORIES CREATED:
+ *  - uploads/                  (main upload folder)
+ *  - uploads/avatars/          (user profile pictures)
+ *  - uploads/temps/             (temporary file processing)
+ */
+const ensureUploadDirectories = async () => {
+  const directories = ["uploads", "uploads/avatars", "uploads/temps"];
+
+  for (const dir of directories) {
+    const fullPath = path.join(process.cwd(), dir);
+
+    try {
+      // Check if directory exists
+      await fs.access(fullPath);
+      console.log(`📁 Directory exists: ${dir}`);
+    } catch (error) {
+      // Directory does not exist, create it
+      console.log(`📁 Creating directory: ${dir}`);
+      await fs.mkdir(fullPath, { recursive: true });
+
+      // Create a .gitkeep file to track empty directory
+      const gitkeepPath = path.join(fullPath, ".gitkeep");
+      await fs.writeFile(gitkeepPath, "");
+      console.log(`📄 Created .gitkeep in: ${dir}/.gitkeep`);
+    }
+  }
+};
+
+/**
+ * Get upload directory path
+ * Utility function for controllers
+ */
+export const getUploadPath = (subDir = "") => {
+  return path.join(process.cwd(), "uploads", subDir);
+};
