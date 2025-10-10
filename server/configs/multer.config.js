@@ -139,3 +139,32 @@ export const documentUpload = multer({
   },
   fileFilter: documentFilter,
 });
+
+// ===== UPLOAD MIDDLEWARE FUNCTIONS =====
+/**
+ * Single Avatar Upload Middleware
+ *
+ * USAGE: router.post('/avatar', uploadSingleAvatar, uploadAvatarController)
+ *
+ * FIELD NAME: 'avatar'
+ */
+export const uploadSingleAvatar = avatarUpload.single("avatar");
+
+/**
+ * Multiple Images Upload Middleware
+ *
+ * USAGE: router.post('/gallery', uploadMultipleImages, uploadGalleryController)
+ *
+ * FIELD NAME: 'images'
+ * MAX FILES: 10
+ *
+ */
+export const uploadMultipleImages = multipleImagesUpload.array("images", 10);
+
+/**
+ * Single Document Upload Middleware
+ *
+ * USAGE: router.post('/document', uploadSingleDocument, uploadDocumentController)
+ * FIELD NAME: 'document'
+ */
+export const uploadSingleDocument = documentUpload.single("document");
