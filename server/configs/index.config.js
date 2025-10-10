@@ -12,6 +12,13 @@ import {
   getUploadPath,
   getAvatarPath,
 } from "./static.config.js";
+import {
+  uploadSingleAvatar,
+  uploadMultipleImages,
+  uploadSingleDocument,
+  handleMulterError,
+  generateUniqueFilename,
+} from "./multer.config.js";
 
 export const expressSetupMiddleware = (app) => {
   // Security Middlewares (order matters!)
@@ -30,3 +37,12 @@ export const expressSetupMiddleware = (app) => {
 
 // ✅ Export static file utilities for use in app.js and controllers
 export { configureStaticFiles, getUploadPath, getAvatarPath };
+
+// ✅ Export multer utilities
+export {
+  uploadSingleAvatar,
+  uploadMultipleImages,
+  uploadSingleDocument,
+  handleMulterError,
+  generateUniqueFilename,
+};
