@@ -7,6 +7,11 @@ import {
   hppConfig,
 } from "./security.config.js";
 import basicExpressConfig from "./express.config.js";
+import {
+  configureStaticFiles,
+  getUploadPath,
+  getAvatarPath,
+} from "./static.config.js";
 
 export const expressSetupMiddleware = (app) => {
   // Security Middlewares (order matters!)
@@ -22,3 +27,6 @@ export const expressSetupMiddleware = (app) => {
   //   Rate Limiting (Apply to API routes)
   app.use("/api/", generalLimiter);
 };
+
+// ✅ Export static file utilities for use in app.js and controllers
+export { configureStaticFiles, getUploadPath, getAvatarPath };
