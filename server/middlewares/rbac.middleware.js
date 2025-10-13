@@ -1,3 +1,4 @@
+import { admin } from "googleapis/build/src/apis/admin";
 import AppError from "../utils/AppError.js";
 
 /**
@@ -167,4 +168,59 @@ export const checkAccountStatus = async (req, res, next) => {
     console.error("❌ Account Status Check Error:", error);
     next(new AppError("Account status check failed", 500));
   }
+};
+
+// ===== PERMISSION UTILITIES =====
+/**
+ * Check if user has specific permission
+ */
+export const hasPermission = (user, permission) => {
+  const rolePermissions = {
+    user: ["read:own", "update:own", "delete:own"],
+    moderator: [
+      "read:own",
+      "update:own",
+      "delete:own",
+      "read:users",
+      "update:users",
+    ],
+    admin: ["*"], // Admin has all permissions
+  };
+
+  const userPermissions = rolePermissions[user.role] || [];
+  return userPermissions.includes("*") || userPermissions.includes(permission);
+};
+
+/**
+ * Get user's role hierarchy level (higher number = more permissions)
+ */
+export const getRoleLevel = (role) => {
+  const roleLevels = {
+    user: 1,
+    moderator: 2,
+    admin: 3,
+  };
+  return roleLevels[role] || 0;
+};
+
+/**
+ * Check if user can perform action on target user
+ */
+export const canModifyUser = (currentUser, targetUser) => {
+  const currentUserLevel = getRoleLevel(currentUser.role);
+  const targetUserLevel = getRoleLevel(targetUser.role);
+
+  // Users can modify their own data, admins can modify anyone,
+  // Moderators can modify users but not other moderators or admins
+  if (currentUser._id.toString() === targetUser._id.toString()) {
+    return true; // Can modify own data
+  }
+  if (currentUser.role === "admin") {
+    return true; // Admin can modify anyone
+  }
+  if (currentUser.role === "moderator" && targetUser.role === "user") {
+    return true; // Moderator can modify users
+  }
+
+  return false; // Otherwise, no permission
 };
