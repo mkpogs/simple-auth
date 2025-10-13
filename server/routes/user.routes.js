@@ -4,8 +4,11 @@ import {
   updateProfile,
   changePassword,
   deleteAccount,
+  uploadAvatar,
+  deleteAvatar,
 } from "../controllers/user.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
+import { uploadSingleAvatar } from "../configs/index.config.js";
 
 const router = express.Router();
 
@@ -28,6 +31,20 @@ router.get("/profile", getProfile);
  * @access  Private (requires login)
  */
 router.put("/profile", updateProfile);
+
+/**
+ * @route   POST /api/users/avatar
+ * @desc    Upload user's profile picture
+ * @access  Private (requires login)
+ */
+router.put("/avatar", uploadSingleAvatar, uploadAvatar);
+
+/**
+ * @route   DELETE /api/users/avatar
+ * @desc    Delete user's profile picture
+ * @access  Private (requires login)
+ */
+router.put("/avatar", deleteAvatar);
 
 /**
  * @route   PUT /api/users/change-password
