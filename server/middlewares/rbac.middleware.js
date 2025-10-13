@@ -112,3 +112,59 @@ export const selfOrAdmin = (req, res, next) => {
     next(new AppError("Authorization failed", 500));
   }
 };
+
+// ===== CHECK ACCOUNT STATUS =====
+/**
+ * Check if user account is active
+ *
+ * USAGE: router.use(protect, checkAccountStatus)
+ * Ensures user account is not suspended, deactivated or banned
+ */
+export const checkAccountStatus = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next(new AppError("User not found", 401));
+    }
+
+    const { accountStatus, isActive } = req.user;
+
+    console.log("🔍 Account status check:", {
+      userId: req.user._id,
+      accountStatus,
+      isActive,
+    });
+
+    // Check if account is active
+    if (!isActive) {
+      return next(
+        new AppError(
+          "Account has been deactivated. Please contact support.",
+          403
+        )
+      );
+    }
+
+    // Check account status
+    switch (accountStatus) {
+      case "suspended":
+        return next(
+          new AppError(
+            "Account is temporarily suspended. Please contact support.",
+            403
+          )
+        );
+      case "banned":
+        return next(new AppError("Account has been permanently banned.", 403));
+      case "pending":
+        return next(new AppError("Account is pending verification.", 403));
+      case "active":
+        console.log("✅ Account status check passed");
+        return next();
+      default:
+        return next(new AppError("Invalid account status.", 403));
+    }
+  } catch (error) {
+    console.error("❌ Account Status Check Error:", error);
+    next(new AppError("Account status check failed", 500));
+  }
+};
