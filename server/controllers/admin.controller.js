@@ -318,3 +318,135 @@ export const updateUserStatus = async (req, res, next) => {
     next(new AppError("Failed to update user status", 500));
   }
 };
+
+// ===== DELETE USER (ADMIN ONLY) =====
+/**
+ * DELETE /api/admin/users/:id
+ *
+ * PURPOSE: Permanently delete a user account
+ * REAL-WORLD USE: Removing spam, GDPR compliance
+ *
+ * SECURITY:
+ *  - Admin only access
+ *  - Cannot delete other admins (unless super admin)
+ *  - permanent action with confirmation
+ */
+export const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { confirmation } = req.body;
+
+    console.log("🗑️ Admin attempting to delete user:", id);
+
+    // Step 1: Require confirmation
+    if (confirmation !== "DELETE USER") {
+      return next(
+        new AppError('Please provide confirmation: "DELETE USER"', 400)
+      );
+    }
+
+    // Step 2: Find target user
+    const targetUser = await User.findById(id);
+    if (!targetUser) return next(new AppError("User not found", 404));
+
+    // Step 3: Security checks
+    if (req.user._id.toString() === id) {
+      return next(
+        new AppError("You cannot delete your own account from admin panel", 400)
+      );
+    }
+
+    if (targetUser === "admin") {
+      return next(new AppError("Cannot delete admin accounts", 403));
+    }
+
+    const userEmail = targetUser.email;
+
+    // Step 4: Delete user
+    await User.findByIdAndDelete(id);
+    console.log("✅ User deleted successfully:", userEmail);
+
+    // Step 5: Return success response
+    return res.status(200).json({
+      success: true,
+      message: `User account ${userEmail} has been permanently deleted.`,
+    });
+  } catch (error) {
+    console.error("❌ Delete User Error:", error);
+    next(new AppError("Failed to delete user", 500));
+  }
+};
+
+// ===== ADMIN DASHBOARD STATS =====
+/**
+ * GET /api/admin/stats
+ *
+ * PURPOSE: Get system statistics for admin dashboard
+ * REAL-WORLD USE: Dashboard overview with key metrics
+ */
+export const getDashboardStats = async (req, res, next) => {
+  try {
+    console.log("📊 Admin fetching dashboard stats");
+
+    // Step 1: Get user Statistics
+    const [
+      totalUsers,
+      totalAdmins,
+      totalModerators,
+      totalRegularUsers,
+      verifiedUsers,
+      suspendedUsers,
+      bannedUsers,
+      recentUsers,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: "admin" }),
+      User.countDocuments({ role: "moderator" }),
+      User.countDocuments({ role: "user" }),
+      User.countDocuments({ isVerified: true }),
+      User.countDocuments({ accountStatus: "active" }),
+      User.countDocuments({ accountStatus: "suspended" }),
+      User.countDocuments({ accountStatus: "banned" }),
+      User.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("name email role accountStatus createdAt")
+        .lean(),
+    ]);
+
+    // Step 2: Calculate percentages
+    const verificationRate =
+      totalUsers > 0 ? ((verifiedUsers / totalUsers) * 100).toFixed(1) : 0;
+    const activeRate =
+      totalUsers > 0 ? ((activeUsers / totalUsers) * 100).toFixed(1) : 0;
+
+    console.log("✅ Dashboard stats compiled");
+
+    // Step 3: Return response
+    return res.status(200).json({
+      success: true,
+      message: "Dashboard stats fetched successfully",
+      data: {
+        userStats: {
+          total: totalUsers,
+          admins: totalAdmins,
+          moderators: totalModerators,
+          users: totalRegularUsers,
+          verified: verifiedUsers,
+          verificationRate: `${verificationRate}%`,
+        },
+        statusStats: {
+          active: activeUsers,
+          suspended: suspendedUsers,
+          banned: bannedUsers,
+          activeRate: `${activeRate}%`,
+        },
+        recentUsers,
+        lastUpdated: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("❌ Get Dashboard Stats Error:", error);
+    next(new AppError("Failed to fetch dashboard statistics", 500));
+  }
+};
