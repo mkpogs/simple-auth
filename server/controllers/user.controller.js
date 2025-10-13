@@ -1,6 +1,14 @@
+import sharp from "sharp";
+import path from "path";
+import fs from "fs/promises";
 import User from "../models/User.model.js";
 import AppError from "../utils/AppError.js";
 import { jwtService } from "../services/index.service.js";
+import {
+  getAvatarPath,
+  handleMulterError,
+  generateUniqueFilename,
+} from "../configs/index.config.js";
 
 // ===== GET USER PROFILE =====
 /**
@@ -373,3 +381,139 @@ export const deleteAccount = async (req, res, next) => {
     next(new AppError("Failed to delete account", 500));
   }
 };
+
+// ===== UPLOAD AVATAR =====
+/**
+ * POST /api/users/avatar
+ *
+ * PURPOSE: Upload and process user's profile picture
+ * REAL-WORLD USE: Like updating profile photo on social media
+ *
+ * WHAT IT DOES:
+ *  1. Receives uploaded  image file (handled by multer middleware)
+ *  2. Processes image (resize, compress, convert to JPEG)
+ *  3. Saves to organized folder structure
+ *  4. Updates user's avatar field in database
+ *  5. Deletes old avatar file (cleanup)
+ *
+ * SECURITY:
+ *  - File validation handled by multer config
+ *  - Image processing prevents malicious uploads
+ *  - Organized file storage
+ */
+export const uploadAvatar = async (req, res, next) => {
+  try {
+    console.log("📸 Avatar upload request for user:", req.user._id);
+
+    // Step 1: Check if file was uploaded (multer middleware handles validation)
+    if (!req.file) {
+      return next(new AppError("Please upload an image file", 400));
+    }
+
+    console.log("📁 Processing uploaded file:", {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    });
+
+    // Step 2: Generate unique filename using utility function
+    const filename = generateUniqueFilename(
+      req.user._id,
+      "avatar",
+      "image/jpeg"
+    );
+
+    console.log("💾 Saving to:", filepath);
+
+    // Step 3: Process image with Sharp
+    await sharp(req.file.buffer)
+      .resize(300, 300, {
+        fit: "cover", // Crop to fill the dimensions
+        position: "center", // Center the crop
+      })
+      .jpeg({
+        quality: 90,
+        progressive: true,
+      })
+      .toFile(filepath);
+
+    console.log("✅ Image processed and saved successfully");
+
+    // Step 4: Get current user to check for old avatar
+    const currentUser = await User.findById(req.user._id);
+    const oldAvatar = currentUser?.avatar;
+
+    // Step 5: Update user avatar in database
+    const avatarUrl = `/uploads/avatars/${req.user._id}/${filename}`;
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        avatar: avatarUrl,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    ).select("-password -refreshTokens -twoFactorAuth.secret");
+
+    if (!user) {
+      // Clean up uploaded file if user update fails
+      await fs.unlink(filepath).catch(console.error);
+      return next(new AppError("User not found", 404));
+    }
+
+    console.log("✅ User avatar updated in database");
+
+    // Step 6: Delete old avatar file (cleanup)
+    if (oldAvatar && oldAvatar !== avatarUrl) {
+      const oldFilePath = path.join(
+        process.cwd(),
+        oldAvatar.replace("/uploads/", "uploads/")
+      );
+      try {
+        await fs.unlink(oldFilePath);
+        console.log("🗑️ Old avatar file deleted:", oldAvatar);
+      } catch (error) {
+        console.log(
+          "⚠️ Could not delete old avatar (file may not exist):",
+          oldAvatar
+        );
+      }
+    }
+
+    // Step 7: Return success response
+    return res.status(200).json({
+      success: true,
+      message: "Avatar uploaded and updated successfully",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          updatedAt: user.updatedAt,
+        },
+        avatarUrl: `${req.protocol}://${req.get("host")}${avatarUrl}`, // Full URL for frontend
+      },
+    });
+  } catch (error) {
+    console.error("❌ Avatar Upload Error:", error);
+
+    // Handle multer errors
+    const multerError = handleMulterError(error);
+    if (multerError !== error) {
+      return next(multerError);
+    }
+    next(new AppError("Failed to upload avatar", 500));
+  }
+};
+
+// ===== DELETE AVATAR =====
+/**
+ * DELETE /api/users/avatar
+ *
+ * PURPOSE:
+ * REAL-WORLD USE:
+ *
+ * WHAT IT DOES:
+ *
+ * SECURITY:
+ */
