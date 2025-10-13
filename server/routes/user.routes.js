@@ -37,14 +37,14 @@ router.put("/profile", updateProfile);
  * @desc    Upload user's profile picture
  * @access  Private (requires login)
  */
-router.put("/avatar", uploadSingleAvatar, uploadAvatar);
+router.post("/avatar", uploadSingleAvatar, uploadAvatar);
 
 /**
  * @route   DELETE /api/users/avatar
  * @desc    Delete user's profile picture
  * @access  Private (requires login)
  */
-router.put("/avatar", deleteAvatar);
+router.delete("/avatar", deleteAvatar);
 
 /**
  * @route   PUT /api/users/change-password

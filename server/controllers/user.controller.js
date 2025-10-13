@@ -423,9 +423,16 @@ export const uploadAvatar = async (req, res, next) => {
       "image/jpeg"
     );
 
+    // Step 3: Get the full file path using the avatar path utility
+    const avatarDir = getAvatarPath(req.user._id);
+    const filepath = path.join(avatarDir, filename);
+
+    // Ensure the directory exists
+    await fs.mkdir(avatarDir, { recursive: true });
+
     console.log("💾 Saving to:", filepath);
 
-    // Step 3: Process image with Sharp
+    // Step 4: Process image with Sharp
     await sharp(req.file.buffer)
       .resize(300, 300, {
         fit: "cover", // Crop to fill the dimensions
@@ -439,11 +446,11 @@ export const uploadAvatar = async (req, res, next) => {
 
     console.log("✅ Image processed and saved successfully");
 
-    // Step 4: Get current user to check for old avatar
+    // Step 5: Get current user to check for old avatar
     const currentUser = await User.findById(req.user._id);
     const oldAvatar = currentUser?.avatar;
 
-    // Step 5: Update user avatar in database
+    // Step 6: Update user avatar in database
     const avatarUrl = `/uploads/avatars/${req.user._id}/${filename}`;
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -462,7 +469,7 @@ export const uploadAvatar = async (req, res, next) => {
 
     console.log("✅ User avatar updated in database");
 
-    // Step 6: Delete old avatar file (cleanup)
+    // Step 7: Delete old avatar file (cleanup)
     if (oldAvatar && oldAvatar !== avatarUrl) {
       const oldFilePath = path.join(
         process.cwd(),
@@ -479,7 +486,7 @@ export const uploadAvatar = async (req, res, next) => {
       }
     }
 
-    // Step 7: Return success response
+    // Step 8: Return success response
     return res.status(200).json({
       success: true,
       message: "Avatar uploaded and updated successfully",
