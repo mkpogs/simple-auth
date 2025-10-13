@@ -510,10 +510,73 @@ export const uploadAvatar = async (req, res, next) => {
 /**
  * DELETE /api/users/avatar
  *
- * PURPOSE:
- * REAL-WORLD USE:
+ * PURPOSE: Remove user's profile picture
+ * REAL-WORLD USE: 'Remove Profile Photo' option
  *
  * WHAT IT DOES:
+ *  1. Get current user's  avatar
+ *  2. Removes avatar URL from database
+ *  3. Deletes actual image file from filesystem
+ *  4. Returns updated user profile
  *
  * SECURITY:
+ *  - User can only delete their own avatar
+ *  - Proper file cleanup prevents storage bloat
  */
+export const deleteAvatar = async (req, res, next) => {
+  try {
+    console.log("🗑️ Avatar deletion request for user:", req.user._id);
+
+    // Step 1: Get current user
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    if (!user.avatar) {
+      return next(new AppError("No avatar to delete", 400));
+    }
+
+    const oldAvatar = user.avatar;
+
+    // Step 2: Remove avatar from database
+    user.avatar = null;
+    user.updatedAt = new Date();
+    await user.save();
+
+    // Step 3: Delete avatar file from filesystem
+    const filePath = path.join(
+      process.cwd(),
+      oldAvatar.replace("/uploads/", "uploads/")
+    );
+
+    try {
+      await fs.unlink(filePath);
+      console.log("🗑️ Avatar file deleted:", oldAvatar);
+    } catch (error) {
+      console.log(
+        "⚠️ Could not delete avatar file (may not exist):",
+        oldAvatar
+      );
+    }
+
+    // Step 4: Return success response
+    return res.status(200).json({
+      success: true,
+      message: "Avatar deleted successfully",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: null,
+          updatedAt: user.updatedAt,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("❌ Delete Avatar Error:", error);
+    next(new AppError("Failed to delete avatar", 500));
+  }
+};
