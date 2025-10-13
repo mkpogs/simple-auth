@@ -546,26 +546,31 @@ export const deleteAvatar = async (req, res, next) => {
     }
 
     const oldAvatar = user.avatar;
+    console.log("📁 Current avatar to delete:", oldAvatar);
 
     // Step 2: Remove avatar from database
     user.avatar = null;
     user.updatedAt = new Date();
     await user.save();
+    console.log("✅ Avatar removed from database");
 
     // Step 3: Delete avatar file from filesystem
-    const filePath = path.join(
-      process.cwd(),
-      oldAvatar.replace("/uploads/", "uploads/")
-    );
+    // Use getAvatarPath utility to get correct directory
+    const avatarDir = getAvatarPath(req.user._id);
+    const filename = path.basename(oldAvatar); // Extract just the filename
+
+    const filepath = path.join(avatarDir, filename);
+
+    console.log("🗑️ Attempting to delete file at:", filepath);
 
     try {
-      await fs.unlink(filePath);
+      await fs.access(filepath); // Check if file exists
+      await fs.unlink(filepath);
       console.log("🗑️ Avatar file deleted:", oldAvatar);
     } catch (error) {
-      console.log(
-        "⚠️ Could not delete avatar file (may not exist):",
-        oldAvatar
-      );
+      console.log("⚠️ Could not delete avatar file:", error.message);
+      console.log("📍 File path that failed:", filePath);
+      // Don't return error since database was already updated
     }
 
     // Step 4: Return success response
