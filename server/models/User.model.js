@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { type } from "os";
 
 const userSchema = new mongoose.Schema(
   {
@@ -168,15 +169,107 @@ const userSchema = new mongoose.Schema(
       lockUntil: Date,
     },
 
-    // *** 2FA (Email-Based - FREE!) ***
+    // *** Two-Factor Authentication - 2FA (Email-Based - FREE!) ***
+    /**
+     * Two-Factor Authentication (2FA) Settings
+     *
+     * SIMPLE EXPLANATION:
+     *  - When user enables 2FA, we store their secret key
+     *  - Phone app uses this secret to generate codes
+     *  - We validate codes using the same secret
+     *  - Backup codes help phone is lost
+     *
+     * WHAT EACH FIELD DOES:
+     *  - isEnabled: Is 2FA turned on? (true/false)
+     *  - secret: Secret key (encrypted for security)
+     *  - tempSecret: Temporary Secret during setup
+     *  - backupCodes: Recovery codes (like spare keys)
+     *  - devices: Track which devices user has has used
+     *  - lastUsed: When was 2FA last used
+     */
     twoFactorAuth: {
+      // Basic 2FA status
       isEnabled: {
         type: Boolean,
         default: false,
+        index: true, // Makes database queries faster
       },
-      secret: String,
-      backupCodes: [String],
-      lastUsed: Date,
+
+      // Secret keys (encrypted for security)
+      secret: {
+        type: String,
+        select: false, // Do not return secret field by default in queries
+      },
+      tempSecret: {
+        type: String,
+        select: false,
+      },
+
+      // Recovery backup codes (in case phone is lost)
+      backupCodes: [
+        {
+          code: {
+            type: String,
+            required: true,
+          },
+          used: {
+            type: Boolean,
+            default: false,
+          },
+          usedAt: {
+            type: Date,
+          },
+        },
+      ],
+
+      // Trusted devices (Advanced feature)
+      trustedDevices: [
+        {
+          deviceId: {
+            type: String,
+            required: true,
+          },
+          deviceName: {
+            type: String,
+            required: true,
+          },
+          userAgent: String,
+          ipAddress: String,
+          trustedAt: {
+            type: Date,
+            default: Date.now,
+          },
+          lastUsed: {
+            type: Date,
+            default: Date.now,
+          },
+          isActive: {
+            type: Boolean,
+            default: true,
+          },
+        },
+      ],
+
+      // Usage Tracking
+      lastUsed: {
+        type: Date,
+      },
+      setupAt: {
+        type: Date, // When 2FA was enabled
+      },
+      totalUsage: {
+        type: Number,
+        default: 0, // Count of how many times 2FA was used
+      },
+
+      // failed attempts (security)
+      failedAttempts: {
+        type: Number,
+        default: 0,
+      },
+      lockUntil: {
+        type: Date,
+      },
     },
   },
   {
