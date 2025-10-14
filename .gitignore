@@ -27,3 +27,5 @@ dist-ssr
 /client/.env.local
 /server/config.env
 
+# Scripts For Seeding Database
+/server/scripts

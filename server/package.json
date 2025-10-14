@@ -6,7 +6,10 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev:server": "nodemon server.js"
+    "dev:server": "nodemon server.js",
+    "seed": "node scripts/seedUsers.js",
+    "seed:force": "node scripts/seedUsers.js --force",
+    "seed:dev": "nodemon scripts/seedUsers.js"
   },
   "keywords": [],
   "author": "",

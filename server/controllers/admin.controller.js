@@ -395,6 +395,7 @@ export const getDashboardStats = async (req, res, next) => {
       totalModerators,
       totalRegularUsers,
       verifiedUsers,
+      activeUsers,
       suspendedUsers,
       bannedUsers,
       recentUsers,
