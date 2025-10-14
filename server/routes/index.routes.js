@@ -1,10 +1,9 @@
 import express from "express";
 import authRoutes from "./auth.routes.js";
 import userRoutes from "./user.routes.js";
+import adminRoutes from "./admin.routes.js";
 
 const router = express.Router();
-
-// ===== CENTRALIZED ROUTES =====
 
 // Health check route
 router.get("/health", (req, res) => {
@@ -16,9 +15,20 @@ router.get("/health", (req, res) => {
   });
 });
 
+// ===== API ROUTES =====
+/**
+ * Mount all routes modules
+ *
+ * API Structure:
+ *  - /api/auth/*       ->  Authentication routes (register, login, OTP, etc.)
+ *  - /api/users/*      ->  User profile routes (protected)
+ *  - /api/admin/*      ->  Admin management routes (admin/moderator only)
+ */
+
 // Route Mounting
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
+router.use("/admin", adminRoutes);
 
 // API info route
 router.get("/", (req, res) => {
@@ -38,6 +48,14 @@ router.get("/", (req, res) => {
         updateProfile: "PUT /api/users/profile",
         changePassword: "PUT /api/users/change-password",
         deleteAccount: "DELETE /api/users/account",
+      },
+      admin: {
+        getDashboardStats: "GET /api/admin/stats",
+        getAllUsers: "GET /api/admin/users",
+        getUserById: "GET /api/admin/users/:id",
+        updateUserRole: "PUT /api/admin/users/:id/role",
+        updateUserStatus: "PUT /api/admin/users/:id/status",
+        deleteUser: "DELETE /api/admin/users/:id",
       },
     },
   });
