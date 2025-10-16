@@ -1,7 +1,7 @@
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import crypto from "crypto";
-import AppError from "../utils/AppError";
+import AppError from "../utils/AppError.js";
 
 /**
  * Two-Factor Authentication Service
