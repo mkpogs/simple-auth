@@ -6,6 +6,10 @@ import {
   otpService,
 } from "../services/index.service.js";
 import AppError from "../utils/AppError.js";
+import {
+  generateDeviceId,
+  parseDeviceInfo,
+} from "../services/twoFactor.service.js";
 
 // ========== USER REGISTRATION ==========
 /**
@@ -248,64 +252,167 @@ export const resendOTP = async (req, res, next) => {
  **/
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, totpToken, trustDevice = false } = req.body;
 
-    // Validate input
+    console.log("🔐 Login attempt:", { email, hasTotpToken: !!totpToken });
+
+    // STEP 1: Validate input
     if (!email || !password) {
-      return next(new AppError("Email and Password are required", 400));
+      return next(new AppError("Please provide email and password", 400));
     }
 
-    // Find user and include password field
-    const user = await User.findByEmail(email).select("+password");
+    // STEP 2: Find user and include 2FA data
+    const user = await User.findOne({ email })
+      .select(
+        "+password +twoFactorAuth.isEnabled +twoFactorAuth.secret +twoFactorAuth.trustedDevices"
+      )
+      .populate("loginHistory", null, null, {
+        sort: { loginAt: -1 },
+        limit: 5,
+      });
+
     if (!user) {
+      console.log("❌ User not found:", email);
       return next(new AppError("Invalid email or password", 401));
     }
 
-    // Validate if user is verified
-    if (!user.isVerified) {
-      return next(
-        new AppError("Account not verified. Please verify your email.", 401)
+    // STEP 3: Check password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      console.log("❌ Invalid password for user:", email);
+      await user.recordLogin(req, false, "Invalid password");
+      return next(new AppError("Invalid email or password", 401));
+    }
+
+    console.log("✅ Password valid for user:", email);
+
+    // STEP 4: Check if 2FA is enabled
+    if (user.twoFactorAuth?.isEnabled) {
+      console.log("🔐 2FA is enabled for user, checking requirements...");
+
+      // Check if device is trusted
+      const deviceId = generateDeviceId(
+        req.headers["user-agent"] || "",
+        req.ip
       );
+      const isTrustedDevice = user.isDeviceTrusted?.(deviceId) || false;
+
+      console.log("📱 Device trust check:", {
+        deviceId: deviceId.substring(0, 8) + "...",
+        isTrustedDevice,
+      });
+
+      // If device is not trusted, require 2FA
+      if (!isTrustedDevice) {
+        // Check if TOTP token provided
+        if (!totpToken) {
+          console.log("❌ 2FA token required but not provided");
+
+          // Record login attempt
+          await user.recordLogin(req, false, "2FA token required");
+
+          return res.status(200).json({
+            success: false,
+            requiresTwoFactor: true,
+            message: "Two-factor authentication required",
+            data: {
+              tempUserId: user._id, // Frontend needs this for 2FA verification
+              email: user.email,
+              isTrustedDevice: false,
+            },
+          });
+        }
+
+        // Verify TOTP token
+        const { verifyTotpToken } = await import(
+          "../services/twoFactor.service.js"
+        );
+        const isValidToken = verifyTotpToken(
+          totpToken,
+          user.twoFactorAuth.secret
+        );
+
+        if (!isValidToken) {
+          console.log("❌ Invalid 2FA token");
+
+          // Handle failed 2FA attempt
+          if (user.handleTwoFactorFailedAttempt) {
+            user.handleTwoFactorFailedAttempt();
+            await user.save();
+          }
+
+          await user.recordLogin(req, false, "Invalid 2FA token");
+          return next(
+            new AppError("Invalid two-factor authentication code", 401)
+          );
+        }
+
+        console.log("✅ 2FA token verified");
+
+        // Reset failed attempts and update usage
+        if (user.resetTwoFactorFailedAttempts) {
+          user.resetTwoFactorFailedAttempts();
+        }
+        if (user.updateTwoFactorUsage) {
+          user.updateTwoFactorUsage();
+        }
+
+        // Add device to trusted devices if requested
+        if (trustDevice) {
+          const deviceInfo = parseDeviceInfo(req.headers["user-agent"] || "");
+          if (user.addTrustedDevice) {
+            user.addTrustedDevice({
+              deviceId,
+              deviceName: `${deviceInfo.browser} on ${deviceInfo.os}`,
+              userAgent: req.headers["user-agent"] || "",
+              ipAddress: req.ip,
+            });
+          }
+          console.log("✅ Device added to trusted devices");
+        }
+      }
     }
 
-    // Check password
-    if (!(await user.comparePassword(password))) {
-      return next(new AppError("Invalid email or password", 401));
-    }
+    // STEP 5: Successful login - generate tokens
+    console.log("✅ Authentication successful, generating tokens...");
 
-    // Update last login
-    user.lastLogin = new Date();
+    const { accessToken, refreshToken } = user.generateTokens();
+
+    // Add refresh token to user's collection
+    user.refreshTokens.push(refreshToken);
+
+    // Record successful login
+    await user.recordLogin(req, true, "Login successful");
     await user.save();
 
-    // Generate Tokens
-    const tokens = jwtService.generateTokenPair(user);
+    console.log("✅ Login successful for user:", user.email);
 
-    // Add refresh token to user
-    user.addRefreshToken(tokens.refreshToken);
-    await user.save();
+    // STEP 6: Return success response
+    const userResponse = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
+      avatar: user.avatar,
+      accountStatus: user.accountStatus,
+      twoFactorEnabled: user.twoFactorAuth?.isEnabled || false,
+    };
 
-    // Return response with tokens
     return res.status(200).json({
       success: true,
-      message: "Login successful!",
+      message: "Login successful",
       data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          isVerified: user.isVerified,
-          avatar: user.avatar,
-          lastLogin: user.lastLogin,
-        },
+        user: userResponse,
         tokens: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
+          accessToken,
+          refreshToken,
         },
       },
     });
   } catch (error) {
-    console.error("Login Error:", error);
-    next(new AppError("Login failed. Please try again.", 500));
+    console.error("❌ Login Error:", error);
+    next(new AppError("Login failed", 500));
   }
 };
 
