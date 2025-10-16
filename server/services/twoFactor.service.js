@@ -265,3 +265,57 @@ export const verifyBackupCode = (inputCode, storedCodes) => {
     return { valid: false, codeIndex: -1 };
   }
 };
+
+// ===== DEVICE MANAGEMENT =====
+/**
+ * Generate unique device ID from user agent and IP
+ */
+export const generateDeviceId = (userAgent, ipAddress) => {
+  const deviceString = `${userAgent}-${ipAddress}-${Date.now()}`;
+  return crypto
+    .createHash("sha256")
+    .update(deviceString)
+    .digest("hex")
+    .substring(0, 16);
+};
+
+/**
+ * Parse user agent to get device info
+ */
+export const parseDeviceInfo = (userAgent) => {
+  // Simple user agent parsing (you can use a library like 'ua-parser-js' for better parsing)
+  const deviceInfo = {
+    browser: "Unknown",
+    os: "Unknown",
+    deviceType: "desktop",
+  };
+
+  if (userAgent) {
+    // Browser detection
+    if (userAgent.includes("Chrome")) deviceInfo.browser = "Chrome";
+    else if (userAgent.includes("Firefox")) deviceInfo.browser = "Firefox";
+    else if (userAgent.includes("Safari")) deviceInfo.browser = "Safari";
+    else if (userAgent.includes("Edge")) deviceInfo.browser = "Edge";
+
+    // OS detection
+    if (userAgent.includes("Windows")) deviceInfo.os = "Windows";
+    else if (userAgent.includes("macOS") || userAgent.includes("Mac OS"))
+      deviceInfo.os = "macOS";
+    else if (userAgent.includes("Linux")) deviceInfo.os = "Linux";
+    else if (userAgent.includes("Android")) deviceInfo.os = "Android";
+    else if (
+      userAgent.includes("iOS") ||
+      userAgent.includes("iPhone") ||
+      userAgent.includes("iPad")
+    )
+      deviceInfo.os = "iOS";
+
+    // Device type detection
+    if (userAgent.includes("Mobile") || userAgent.includes("Android"))
+      deviceInfo.deviceType = "mobile";
+    else if (userAgent.includes("Tablet") || userAgent.includes("iPad"))
+      deviceInfo.deviceType = "tablet";
+  }
+
+  return deviceInfo;
+};
