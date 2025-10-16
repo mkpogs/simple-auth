@@ -319,3 +319,58 @@ export const parseDeviceInfo = (userAgent) => {
 
   return deviceInfo;
 };
+
+// ===== UTILITY FUNCTIONS =====
+/**
+ * Encrypt secret for database storage
+ */
+export const encryptSecret = encrypt2FASecret;
+
+/**
+ * Check if 2FA setup has expired (temp secret older than 10 minutes)
+ */
+export const isTwoFactorSetupExpired = (user) => {
+  if (!user.twoFactorAuth?.tempSecret) return true;
+
+  const setupTime = user.updatedAt;
+  const expirationTime = 10 * 60 * 1000; // 10 minutes
+
+  return Date.now() - setupTime.getTime() > expirationTime;
+};
+
+/**
+ * Generate current TOTP code (for testing purposes)
+ */
+export const getCurrentCode = (secret) => {
+  try {
+    return speakeasy.totp({
+      secret: secret,
+      encoding: "base32",
+    });
+  } catch (error) {
+    console.error("❌ Get Current Code Error:", error);
+    return null;
+  }
+};
+
+/**
+ * Validate encryption key on service startup
+ */
+export const validateEncryptionKey = () => {
+  const key = process.env.TWO_FACTOR_ENCRYPTION_KEY;
+
+  if (!key) {
+    throw new Error(
+      "TWO_FACTOR_ENCRYPTION_KEY not found in environment variables"
+    );
+  }
+
+  if (key.length < 32) {
+    throw new Error(
+      "TWO_FACTOR_ENCRYPTION_KEY must be at least 32 characters long"
+    );
+  }
+
+  console.log("✅ 2FA encryption key validated");
+  return true;
+};
