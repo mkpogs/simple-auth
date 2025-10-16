@@ -53,6 +53,9 @@ const encrypt2FASecret = (secret) => {
   }
 };
 
+/**
+ * Decrypt 2FA secret when validating codes
+ */
 const decrypt2FASecret = (encryptedSecret) => {
   const encryptionKey = process.env.TWO_FACTOR_ENCRYPTION_KEY;
 
@@ -74,5 +77,112 @@ const decrypt2FASecret = (encryptedSecret) => {
   } catch (error) {
     console.error("❌ Decryption error:", error);
     throw new AppError("Failed to decrypt 2FA secret", 500);
+  }
+};
+
+// ===== GENERATE SECRET & QR CODE =====
+/**
+ * Generate TOTP secret and QR code for user
+ *
+ * WHAT IT RETURNS:
+ *  - secret            : Secret key to save in database (encrypted)
+ *  - qrCodeUrl         : QR code image as base64 (show to user)
+ *  - manualEntryKey    : Secret key as text (if user can't scan QR)
+ *  - backupCodes       : Recovery codes (show once, then hide)
+ */
+export const generateTwoFactorSecret = async (user) => {
+  try {
+    console.log("🔐 Generating 2FA setup for user:", user.email);
+
+    // Step 1: Generate unique secret for this user
+    const secret = speakeasy.generateSecret({
+      name: `${user.name} (${user.email})`,
+      issuer: process.env.APP_NAME || "simpleAuth",
+      length: 32, // 32 characters = very secure
+    });
+
+    console.log("✅ Secret generated successfully");
+
+    // Step 2: Create QR code image
+    const qrCodeDataURL = await QRCode.toDataURL(secret.otpauth_url, {
+      errorCorrectionLevel: "H", // High error correction
+      type: "image/png",
+      quality: 0.92,
+      margin: 2,
+      color: {
+        dark: "#000000",
+        light: "#ffffff",
+      },
+      width: 300,
+    });
+
+    console.log("✅ QR code generated successfully");
+
+    // Step 3: Generate backup recovery codes
+    const backupCodes = generateBackupCodes();
+
+    // Step 4: Return everything needed for 2FA setup
+    return {
+      secret: secret.base32,
+      qrCodeUrl: qrCodeDataURL,
+      manualEntryKey: secret.base32,
+      otpauthUrl: secret.otpauth_url,
+      backupCodes: backupCodes.plainCodes,
+      hashedBackupCodes: backupCodes.hashedCodes,
+      issuer: process.env.APP_NAME || "simpleAuth",
+    };
+  } catch (error) {
+    console.error("❌ Generate 2FA Secret Error:", error);
+    throw new AppError("Failed to generate 2FA setup. Please try again.", 500);
+  }
+};
+
+// ===== VERIFY TOTP TOKEN =====
+/**
+ * Verify 6-digit code from user's authenticator app
+ *
+ * PARAMETERS:
+ *  - token: 6-digit code user entered
+ *  - encryptedSecret: User's encrypted 2FA secret from DB
+ *  - window: Time tolerance (default: 2 = ±1 minute)
+ */
+export const verifyTotpToken = (token, encryptedSecret, window = 2) => {
+  try {
+    console.log("🔍 Verifying TOTP token...");
+
+    // Input validation
+    if (!token || !encryptedSecret) {
+      console.log("❌ Missing token or secret");
+      return false;
+    }
+
+    // Clean token (remove spaces, ensure 6 digits)
+    const cleanToken = token.toString().replace(/\s/g, "");
+    if (cleanToken.length !== 6 || !/^\d{6}$/.test(cleanToken)) {
+      console.log("❌ Invalid token format");
+      return false;
+    }
+
+    // Decrypt secret
+    const secret = decrypt2FASecret(encryptedSecret);
+
+    // Verify token using speakeasy
+    const isValid = speakeasy.totp.verify({
+      secret: secret,
+      encoding: "base32",
+      token: cleanToken,
+      window: window, // Accept codes from ±window time periods
+    });
+
+    console.log("🔍 TOTP verification result:", {
+      token: cleanToken,
+      isValid,
+      window,
+    });
+
+    return isValid;
+  } catch (error) {
+    console.error("❌ TOTP Verification Error:", error);
+    return false;
   }
 };
