@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import User from "../models/User.model.js";
 import AppError from "../utils/AppError.js";
 import {
@@ -6,6 +7,17 @@ import {
   encryptSecret,
   isTwoFactorSetupExpired,
 } from "../services/twoFactor.service.js";
+
+// ========== HELPER FUNCTIONS ==========
+/**
+ * Hash backup code for storage/comparison
+ */
+const hashBackupCode = (code) => {
+  return crypto
+    .createHash("sha256")
+    .update(code.toString().toUpperCase().trim())
+    .digest("hex");
+};
 
 /**
  * Two-Factor Authentication Controller
