@@ -480,6 +480,39 @@ userSchema.methods.disable2FA = function () {
   return this;
 };
 
+// *** Add Trusted Device ***
+userSchema.methods.addTrustedDevice = function (deviceInfo) {
+  // Check if device already exists
+  const existingDevice = this.twoFactorAuth.trustedDevices.find(
+    (device) => device.deviceId === deviceInfo.deviceId
+  );
+
+  if (existingDevice) {
+    // Update existing device
+    existingDevice.lastUsed = new Date();
+    existingDevice.isActive = true;
+  } else {
+    // Add new trusted device
+    this.twoFactorAuth.trustedDevices.push({
+      deviceId: deviceInfo.deviceId,
+      deviceName: deviceInfo.deviceName,
+      userAgent: deviceInfo.userAgent,
+      ipAddress: deviceInfo.ipAddress,
+      trustedAt: new Date(),
+      lastUsed: new Date(),
+      isActive: true,
+    });
+  }
+  return this;
+};
+
+// *** Check if device is Trusted ***
+userSchema.methods.isDeviceTrusted = function (deviceId) {
+  return this.twoFactorAuth.trustedDevices.some(
+    (device) => device.deviceId === deviceId && device.isActive
+  );
+};
+
 // ==================== STATIC METHODS ====================
 // *** Find user by email (including unverified users) ***
 userSchema.statics.findByEmail = function (email) {

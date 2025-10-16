@@ -17,3 +17,4 @@ import AppError from "../utils/AppError";
  *  - Backup codes are hashed
  *  - Time-based validation with a window
  */
+const encrypt2FASecret = (secret) => {};
