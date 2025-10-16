@@ -186,3 +186,82 @@ export const verifyTotpToken = (token, encryptedSecret, window = 2) => {
     return false;
   }
 };
+
+// ===== BACKUP CODES =====
+/**
+ * Generate backup recovery codes
+ * Creates 10 single-use recovery codes
+ */
+export const generateBackupCodes = () => {
+  try {
+    console.log("🔑 Generating backup codes...");
+
+    const codes = [];
+    const hashedCodes = [];
+
+    // Generate 10 backup codes
+    for (let i = 0; i < 10; i++) {
+      // Generate 8-character alphanumeric code
+      const code = crypto.randomBytes(4).toString("hex").toUpperCase();
+
+      // Hash the code for secure storage
+      const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
+
+      codes.push(code);
+      hashedCodes.push({
+        code: hashedCode,
+        used: false,
+        usedAt: null,
+      });
+    }
+
+    console.log("✅ Generated 10 backup codes");
+
+    return {
+      plainCodes: codes,
+      hashedCodes: hashedCodes,
+    };
+  } catch (error) {
+    console.error("❌ Generate Backup Codes Error:", error);
+    throw new AppError("Failed to generate backup codes", 500);
+  }
+};
+
+/**
+ * Verify backup recovery code
+ */
+export const verifyBackupCode = (inputCode, storedCodes) => {
+  try {
+    console.log("🔑 Verifying backup code...");
+
+    if (!inputCode || !storedCodes || storedCodes.length === 0) {
+      return { valid: false, codeIndex: -1 };
+    }
+
+    // Clean and hash input code
+    const cleanCode = inputCode.toString().trim().toUpperCase();
+    const hashedInput = crypto
+      .createHash("sha256")
+      .update(cleanCode)
+      .digest("hex");
+
+    // Find matching unused code
+    const codeIndex = storedCodes.findIndex(
+      (codeObj) => codeObj.code === hashedInput && !codeObj.used
+    );
+
+    const isValid = codeIndex !== -1;
+
+    console.log("🔑 Backup code verification:", {
+      isValid,
+      codeIndex,
+      totalCodes: storedCodes.length,
+      usedCodes: storedCodes.filter((c) => c.used).length,
+    });
+
+    return { valid: isValid, codeIndex };
+  } catch (error) {
+    console.error("❌ Backup Code Verification Error:", error);
+    return { valid: false, codeIndex: -1 };
+  }
+};
