@@ -376,10 +376,10 @@ export const login = async (req, res, next) => {
     // STEP 5: Successful login - generate tokens
     console.log("✅ Authentication successful, generating tokens...");
 
-    const { accessToken, refreshToken } = user.generateTokens();
+    const { accessToken, refreshToken } = jwtService.generateTokenPair(user);
 
     // Add refresh token to user's collection
-    user.refreshTokens.push(refreshToken);
+    user.addRefreshToken(refreshToken);
 
     // Record successful login
     await user.recordLogin(req, true, "Login successful");

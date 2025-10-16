@@ -39,14 +39,21 @@ const encrypt2FASecret = (secret) => {
   }
 
   try {
-    const algorithm = "aes-256-cbc";
+    const algorithm = "aes-256-gcm";
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipher(algorithm, encryptionKey);
+
+    // Create cipher with key (ensure 32 bytes)
+    const key = Buffer.from(encryptionKey, "utf8").slice(0, 32);
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
 
     let encrypted = cipher.update(secret, "utf8", "hex");
     encrypted += cipher.final("hex");
 
-    return iv.toString("hex") + ":" + encrypted;
+    // Get auth tag for GCM mode
+    const authTag = cipher.getAuthTag();
+
+    // Return iv:authTag:encrypted
+    return iv.toString("hex") + ":" + authTag.toString("hex") + ":" + encrypted;
   } catch (error) {
     console.error("❌ Encryption error:", error);
     throw new AppError("Failed to encrypt 2FA secret", 500);
@@ -64,13 +71,24 @@ const decrypt2FASecret = (encryptedSecret) => {
   }
 
   try {
-    const algorithm = "aes-256-cbc";
-    const textParts = encryptedSecret.split(":");
-    const iv = Buffer.from(textParts.shift(), "hex");
-    const encryptedText = textParts.join(":");
+    const algorithm = "aes-256-gcm";
 
-    const decipher = crypto.createDecipher(algorithm, encryptionKey);
-    let decrypted = decipher.update(encryptedText, "hex", "utf8");
+    // Split encrypted data (iv:authTag:encrypted)
+    const parts = encryptedSecret.split(":");
+    if (parts.length !== 3) {
+      throw new Error("Invalid encrypted data format");
+    }
+
+    const iv = Buffer.from(parts[0], "hex");
+    const authTag = Buffer.from(parts[1], "hex");
+    const encrypted = parts[2];
+
+    // Create decipher
+    const key = Buffer.from(encryptionKey, "utf8").slice(0, 32);
+    const decipher = crypto.createDecipheriv(algorithm, key, iv);
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
     decrypted += decipher.final("utf8");
 
     return decrypted;
