@@ -3,10 +3,7 @@ import AppError from "../utils/AppError.js";
 import {
   generateTwoFactorSecret,
   verifyTotpToken,
-  verifyBackupCode,
   encryptSecret,
-  generateDeviceId,
-  parseDeviceInfo,
   isTwoFactorSetupExpired,
 } from "../services/twoFactor.service.js";
 
@@ -44,19 +41,34 @@ export const enable2FA = async (req, res, next) => {
       );
     }
 
-    // STEP 2: Generate 2FA secret and QR code
-    const twoFactorData = await generateTwoFactorSecret(req.user);
+    // ADD THIS: Clear any existing incomplete setup
+    if (req.user.twoFactorAuth?.tempSecret) {
+      console.log("🔄 Clearing previous incomplete setup");
+      req.user.twoFactorAuth.tempSecret = undefined;
+    }
 
-    console.log("✅ 2FA secret and QR code generated");
+    // STEP 2: Generate 2FA secret and QR code
+    console.log("🔐 Generating 2FA setup for user:", req.user.email);
+    const twoFactorData = await generateTwoFactorSecret(req.user);
+    console.log("✅ Secret generated successfully");
 
     // STEP 3: Save temporary secret to database (not activated yet)
     const encryptedSecret = encryptSecret(twoFactorData.secret);
+    console.log("🔍 Encrypted secret length:", encryptedSecret?.length);
 
     req.user.twoFactorAuth.tempSecret = encryptedSecret;
     req.user.twoFactorAuth.backupCodes = twoFactorData.hashedBackupCodes;
     req.user.updatedAt = new Date();
 
-    await req.user.save();
+    const savedUser = await req.user.save();
+
+    // ADD THIS VERIFICATION - CRUCIAL!
+    console.log("🔍 Verify tempSecret was saved:", {
+      hasTempSecret: !!savedUser.twoFactorAuth?.tempSecret,
+      tempSecretLength: savedUser.twoFactorAuth?.tempSecret?.length,
+      userId: savedUser._id,
+      updatedAt: savedUser.updatedAt,
+    });
 
     console.log("✅ Temporary 2FA data saved to database");
 
@@ -98,74 +110,106 @@ export const enable2FA = async (req, res, next) => {
  */
 export const verify2FASetup = async (req, res, next) => {
   try {
+    console.log("🔍 VERIFY 2FA - Step 1: Initial user object");
+    console.log("🔍 User ID:", req.user._id);
+
+    // ✅ Re-fetch user with tempSecret included
+    const userWithTempSecret = await User.findById(req.user._id).select(
+      "+twoFactorAuth.tempSecret"
+    );
+
+    if (!userWithTempSecret) {
+      return next(new AppError("User not found", 404));
+    }
+
+    console.log("🔍 Fresh user with tempSecret:", {
+      hasTempSecret: !!userWithTempSecret.twoFactorAuth?.tempSecret,
+      tempSecretLength: userWithTempSecret.twoFactorAuth?.tempSecret?.length,
+    });
+
     const { token } = req.body;
 
-    console.log("🔍 2FA setup verification from user:", req.user.email);
-
-    // STEP 1: Validate input
     if (!token) {
       return next(new AppError("Please provide a verification token", 400));
     }
 
-    // STEP 2: Check if user has temporary secret (setup in progress)
-    if (!req.user.twoFactorAuth?.tempSecret) {
+    // Use the fresh user object with tempSecret
+    if (!userWithTempSecret.twoFactorAuth?.tempSecret) {
+      console.log("❌ NO TEMP SECRET FOUND!");
       return next(
         new AppError("No 2FA setup in progress. Please start setup first.", 400)
       );
     }
 
-    // STEP 3: Check if setup has expired (10 minutes)
-    if (isTwoFactorSetupExpired(req.user)) {
-      // Clean up expired setup
-      req.user.twoFactorAuth.tempSecret = undefined;
-      req.user.twoFactorAuth.backupCodes = [];
-      await req.user.save();
+    // Check expiration
+    const setupTime = userWithTempSecret.updatedAt;
+    const now = new Date();
+    const timeDiffMinutes = (now - setupTime) / (1000 * 60);
+    console.log("🔍 Time since setup:", timeDiffMinutes, "minutes");
 
+    if (isTwoFactorSetupExpired(userWithTempSecret)) {
+      console.log("❌ Setup expired");
+      userWithTempSecret.twoFactorAuth.tempSecret = undefined;
+      userWithTempSecret.twoFactorAuth.backupCodes = [];
+      await userWithTempSecret.save();
       return next(
         new AppError("2FA setup has expired. Please start setup again.", 400)
       );
     }
 
-    // STEP 4: Verify the token
+    // Verify the token using the fresh user object
+    console.log("🔍 About to verify token:", token);
+
     const isValidToken = verifyTotpToken(
       token,
-      req.user.twoFactorAuth.tempSecret
+      userWithTempSecret.twoFactorAuth.tempSecret
     );
 
+    console.log("🔍 Token verification result:", isValidToken);
+
     if (!isValidToken) {
-      console.log("❌ Invalid verification token");
+      console.log("❌ Token verification failed");
       return next(
         new AppError("Invalid verification code. Please try again.", 400)
       );
     }
 
-    console.log("✅ 2FA verification successful");
+    console.log("✅ 2FA verification successful - Activating 2FA...");
 
-    // STEP 5: Activate 2FA permanently
-    req.user.twoFactorAuth.isEnabled = true;
-    req.user.twoFactorAuth.secret = req.user.twoFactorAuth.tempSecret; // Move to permanent
-    req.user.twoFactorAuth.tempSecret = undefined; // Clear temporary
-    req.user.twoFactorAuth.setupAt = new Date();
-    req.user.twoFactorAuth.lastUsed = new Date();
-    req.user.twoFactorAuth.totalUsage = 1;
-    req.user.twoFactorAuth.failedAttempts = 0;
-    req.user.updatedAt = new Date();
+    // ACTIVATE 2FA using the fresh user object
+    userWithTempSecret.twoFactorAuth.isEnabled = true;
+    userWithTempSecret.twoFactorAuth.secret =
+      userWithTempSecret.twoFactorAuth.tempSecret;
+    userWithTempSecret.twoFactorAuth.tempSecret = undefined; // Clear temp secret
+    userWithTempSecret.twoFactorAuth.setupAt = new Date();
+    userWithTempSecret.twoFactorAuth.lastUsed = null;
+    userWithTempSecret.twoFactorAuth.totalUsage = 0;
+    userWithTempSecret.twoFactorAuth.failedAttempts = 0;
+    userWithTempSecret.twoFactorAuth.lockUntil = undefined;
+    userWithTempSecret.updatedAt = new Date();
 
-    await req.user.save();
+    await userWithTempSecret.save();
+    console.log("✅ 2FA activated and saved to database");
 
-    console.log("✅ 2FA activated for user:", req.user.email);
+    // Count backup codes
+    const backupCodesCount =
+      userWithTempSecret.twoFactorAuth.backupCodes?.length || 0;
 
-    // STEP 6: Return success response
+    // Return success response
     return res.status(200).json({
       success: true,
       message: "Two-factor authentication has been successfully enabled",
       data: {
         isEnabled: true,
-        setupAt: req.user.twoFactorAuth.setupAt,
-        backupCodesCount: req.user.twoFactorAuth.backupCodes.filter(
-          (c) => !c.used
-        ).length,
+        setupAt: userWithTempSecret.twoFactorAuth.setupAt,
+        backupCodesCount: backupCodesCount,
         message: "Your account is now more secure with 2FA enabled!",
+        nextSteps: {
+          step1: "Test your 2FA by logging out and logging back in",
+          step2:
+            "Keep your backup codes safe - you'll need them if you lose your phone",
+          step3: "Consider adding trusted devices for convenience",
+        },
       },
     });
   } catch (error) {
@@ -187,59 +231,84 @@ export const verify2FASetup = async (req, res, next) => {
  */
 export const disable2FA = async (req, res, next) => {
   try {
+    console.log("🔐 Disable 2FA request from:", req.user.email);
+
     const { password, confirmationCode } = req.body;
 
-    console.log("🚫 2FA disable request from user:", req.user.email);
-
-    // STEP 1: Security checks
+    // Validate input
     if (!password) {
-      return next(
-        new AppError("Please provide your password to disable 2FA", 400)
-      );
+      return next(new AppError("Please provide your current password", 400));
     }
 
-    // STEP 2: Verify password
-    const isPasswordValid = await req.user.comparePassword(password);
-    if (!isPasswordValid) {
-      console.log("❌ Invalid password for 2FA disable");
-      return next(new AppError("Invalid password. Cannot disable 2FA.", 401));
-    }
-
-    // STEP 3: Check if 2FA is enabled
+    // Check if 2FA is enabled
     if (!req.user.twoFactorAuth?.isEnabled) {
       return next(
         new AppError("Two-factor authentication is not enabled", 400)
       );
     }
 
-    // STEP 4: Verify current 2FA code (additional security)
-    if (confirmationCode) {
-      const isValidCode = verifyTotpToken(
-        confirmationCode,
-        req.user.twoFactorAuth.secret
-      );
-      if (!isValidCode) {
-        return next(new AppError("Invalid 2FA code. Cannot disable 2FA.", 400));
-      }
+    // ✅ FETCH USER WITH PASSWORD FIELD
+    const userWithPassword = await User.findById(req.user._id).select(
+      "+password +twoFactorAuth.secret"
+    );
+
+    if (!userWithPassword) {
+      return next(new AppError("User not found", 404));
     }
 
-    console.log("✅ Security checks passed for 2FA disable");
+    // Verify password using the fresh user object
+    const isPasswordValid = await userWithPassword.comparePassword(password);
 
-    // STEP 5: Disable 2FA completely
-    req.user.twoFactorAuth.isEnabled = false;
-    req.user.twoFactorAuth.secret = undefined;
-    req.user.twoFactorAuth.tempSecret = undefined;
-    req.user.twoFactorAuth.backupCodes = [];
-    req.user.twoFactorAuth.trustedDevices = [];
-    req.user.twoFactorAuth.failedAttempts = 0;
-    req.user.twoFactorAuth.lockUntil = undefined;
-    req.user.updatedAt = new Date();
+    if (!isPasswordValid) {
+      console.log("❌ Invalid password for 2FA disable");
+      return next(new AppError("Invalid password. Cannot disable 2FA.", 401));
+    }
 
-    await req.user.save();
+    console.log("✅ Password verified for 2FA disable");
 
-    console.log("✅ 2FA disabled for user:", req.user.email);
+    // If confirmation code provided, verify it (extra security)
+    if (confirmationCode) {
+      console.log("🔍 Verifying confirmation code...");
 
-    // STEP 6: Return success response
+      const { verifyTotpToken } = await import(
+        "../services/twoFactor.service.js"
+      );
+      const isValidToken = verifyTotpToken(
+        confirmationCode,
+        userWithPassword.twoFactorAuth.secret
+      );
+
+      if (!isValidToken) {
+        console.log("❌ Invalid confirmation code");
+        return next(
+          new AppError("Invalid confirmation code. Cannot disable 2FA.", 401)
+        );
+      }
+
+      console.log("✅ Confirmation code verified");
+    }
+
+    console.log("🔐 Disabling 2FA for user...");
+
+    // Disable 2FA - clear all 2FA data
+    userWithPassword.twoFactorAuth = {
+      isEnabled: false,
+      secret: null,
+      setupAt: null,
+      lastUsed: null,
+      totalUsage: 0,
+      failedAttempts: 0,
+      lockUntil: null,
+      backupCodes: [],
+      trustedDevices: [],
+    };
+
+    userWithPassword.updatedAt = new Date();
+    await userWithPassword.save();
+
+    console.log("✅ 2FA disabled successfully");
+
+    // Return success response
     return res.status(200).json({
       success: true,
       message: "Two-factor authentication has been disabled",
@@ -248,6 +317,11 @@ export const disable2FA = async (req, res, next) => {
         disabledAt: new Date(),
         warning:
           "Your account security has been reduced. Consider re-enabling 2FA.",
+        nextSteps: {
+          step1: "You can now login with just email and password",
+          step2: "Consider enabling 2FA again for better security",
+          step3: "Monitor your account for any suspicious activity",
+        },
       },
     });
   } catch (error) {
@@ -321,51 +395,92 @@ export const get2FAStatus = async (req, res, next) => {
  */
 export const regenerateBackupCodes = async (req, res, next) => {
   try {
+    console.log("🔑 Regenerate backup codes request from:", req.user.email);
+
     const { password } = req.body;
 
-    console.log(
-      "🔄 Regenerate backup codes request from user:",
-      req.user.email
-    );
+    // Validate input
+    if (!password) {
+      return next(new AppError("Please provide your current password", 400));
+    }
 
-    // Security checks
+    // Check if 2FA is enabled
     if (!req.user.twoFactorAuth?.isEnabled) {
       return next(
-        new AppError("2FA must be enabled to regenerate backup codes", 400)
+        new AppError("Two-factor authentication is not enabled", 400)
       );
     }
 
-    if (!password) {
-      return next(new AppError("Please provide your password", 400));
+    // ✅ FETCH USER WITH PASSWORD FIELD
+    const userWithPassword = await User.findById(req.user._id).select(
+      "+password"
+    );
+
+    if (!userWithPassword) {
+      return next(new AppError("User not found", 404));
     }
 
-    const isPasswordValid = await req.user.comparePassword(password);
+    // Verify password using the fresh user object
+    const isPasswordValid = await userWithPassword.comparePassword(password);
+
     if (!isPasswordValid) {
+      console.log("❌ Invalid password provided for backup codes regeneration");
       return next(new AppError("Invalid password", 401));
     }
+
+    console.log("✅ Password verified, generating new backup codes...");
 
     // Generate new backup codes
     const { generateBackupCodes } = await import(
       "../services/twoFactor.service.js"
     );
-    const newBackupCodes = generateBackupCodes();
+    const backupCodesResult = generateBackupCodes();
 
-    // Update user with new backup codes
-    req.user.twoFactorAuth.backupCodes = newBackupCodes.hashedCodes;
-    req.user.updatedAt = new Date();
+    console.log("🔍 Backup codes result:", {
+      hasResult: !!backupCodesResult,
+      hasPlainCodes: !!backupCodesResult?.plainCodes,
+      hasHashedCodes: !!backupCodesResult?.hashedCodes,
+      plainCodesLength: backupCodesResult?.plainCodes?.length,
+      hashedCodesLength: backupCodesResult?.hashedCodes?.length,
+    });
 
-    await req.user.save();
+    // Validate the result
+    if (
+      !backupCodesResult ||
+      !backupCodesResult.plainCodes ||
+      !backupCodesResult.hashedCodes
+    ) {
+      console.error("❌ Invalid backup codes generation result");
+      return next(new AppError("Failed to generate backup codes", 500));
+    }
 
-    console.log("✅ Backup codes regenerated for user:", req.user.email);
+    // ✅ FIX: Use correct property names from service
+    const { plainCodes: backupCodes, hashedCodes: hashedBackupCodes } =
+      backupCodesResult;
 
+    // Replace old backup codes with new ones
+    userWithPassword.twoFactorAuth.backupCodes = hashedBackupCodes;
+    userWithPassword.updatedAt = new Date();
+
+    await userWithPassword.save();
+    console.log("✅ New backup codes generated and saved");
+
+    // Return new backup codes (only time they're shown in plain text)
     return res.status(200).json({
       success: true,
       message: "New backup codes generated successfully",
       data: {
-        backupCodes: newBackupCodes.plainCodes,
+        backupCodes: backupCodes, // Plain text codes (show once!)
         warning:
           "Save these codes securely. Old backup codes are no longer valid.",
+        total: backupCodes.length,
         generated: new Date(),
+        instructions: {
+          step1: "Save these codes in a secure location",
+          step2: "Each code can only be used once",
+          step3: "Use these if you lose access to your authenticator app",
+          step4: "Keep them separate from your device",
+        },
       },
     });
   } catch (error) {
@@ -374,101 +489,181 @@ export const regenerateBackupCodes = async (req, res, next) => {
   }
 };
 
-// ========== VERIFY 2FA DURING LOGIN ==========
+// ========== VERIFY 2FA LOGIN (Complete 2-Step Login) ==========
 /**
- * POST /api/auth/verify-2fa
+ * POST /api/2fa/verify-login
  *
- * PURPOSE: Verify 2FA code during login process
- * USED BY: Authentication middleware
+ * PURPOSE: Complete the 2-step login process
+ * WHAT IT DOES:
+ * 1. Validate temp user ID from login response
+ * 2. Verify the 2FA token
+ * 3. Generate JWT tokens
+ * 4. Complete the login process
  */
 export const verify2FALogin = async (req, res, next) => {
   try {
-    const { token, backupCode, trustDevice } = req.body;
-    const { tempUserId } = req; // Set by auth middleware
+    console.log("🔐 2FA Login Verification Started");
 
-    console.log("🔐 2FA login verification for user ID:", tempUserId);
+    const { tempUserId, twoFactorToken, trustDevice = false } = req.body;
 
-    // Find user
-    const user = await User.findById(tempUserId).select(
-      "+twoFactorAuth.secret +twoFactorAuth.backupCodes"
-    );
-    if (!user || !user.twoFactorAuth?.isEnabled) {
-      return next(new AppError("2FA verification not required", 400));
-    }
-
-    // Check if 2FA is locked
-    if (user.isTwoFactorLocked()) {
-      const lockTime = Math.ceil(
-        (user.twoFactorAuth.lockUntil - new Date()) / 60000
-      );
+    // Validate input
+    if (!tempUserId || !twoFactorToken) {
       return next(
-        new AppError(`2FA is locked. Try again in ${lockTime} minutes.`, 423)
+        new AppError("Please provide tempUserId and twoFactorToken", 400)
       );
     }
 
-    let isValid = false;
-    let usedBackupCode = false;
+    console.log("🔍 Verifying 2FA login for user:", tempUserId);
 
-    // Verify TOTP token
-    if (token) {
-      isValid = verifyTotpToken(token, user.twoFactorAuth.secret);
+    // Find user with 2FA data
+    const user = await User.findById(tempUserId).select(
+      "+twoFactorAuth.secret +twoFactorAuth.backupCodes +twoFactorAuth.trustedDevices"
+    );
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
     }
-    // Or verify backup code
-    else if (backupCode) {
-      const backupResult = verifyBackupCode(
-        backupCode,
-        user.twoFactorAuth.backupCodes
+
+    if (!user.twoFactorAuth?.isEnabled) {
+      return next(new AppError("2FA is not enabled for this user", 400));
+    }
+
+    // Check if user account is active
+    if (user.accountStatus !== "active") {
+      return next(
+        new AppError("Account is not active. Please contact support.", 401)
       );
-      if (backupResult.valid) {
-        isValid = true;
-        usedBackupCode = true;
+    }
+
+    console.log("🔍 Attempting to verify 2FA token...");
+
+    // Try to verify as TOTP token first
+    let isValidToken = false;
+    let isBackupCode = false;
+
+    try {
+      isValidToken = verifyTotpToken(twoFactorToken, user.twoFactorAuth.secret);
+      console.log("🔍 TOTP verification result:", isValidToken);
+    } catch (error) {
+      console.log("❌ TOTP verification failed:", error.message);
+    }
+
+    // If TOTP fails, try backup codes
+    if (!isValidToken) {
+      console.log("🔍 Trying backup codes...");
+
+      const backupCodeIndex = user.twoFactorAuth.backupCodes.findIndex(
+        (bc) => !bc.used && bc.code === hashBackupCode(twoFactorToken)
+      );
+
+      if (backupCodeIndex !== -1) {
+        isValidToken = true;
+        isBackupCode = true;
 
         // Mark backup code as used
-        user.twoFactorAuth.backupCodes[backupResult.codeIndex].used = true;
-        user.twoFactorAuth.backupCodes[backupResult.codeIndex].usedAt =
-          new Date();
+        user.twoFactorAuth.backupCodes[backupCodeIndex].used = true;
+        user.twoFactorAuth.backupCodes[backupCodeIndex].usedAt = new Date();
+
+        console.log("✅ Valid backup code used");
       }
-    } else {
-      return next(
-        new AppError("Please provide either a 2FA token or backup code", 400)
-      );
     }
 
-    if (!isValid) {
-      // Handle failed attempt
-      user.handleTwoFactorFailedAttempt();
+    if (!isValidToken) {
+      console.log("❌ Invalid 2FA token");
+
+      // Record failed attempt
+      user.twoFactorAuth.failedAttempts =
+        (user.twoFactorAuth.failedAttempts || 0) + 1;
+
+      // Lock account after 5 failed attempts for 15 minutes
+      if (user.twoFactorAuth.failedAttempts >= 5) {
+        user.twoFactorAuth.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save();
+
+        return next(
+          new AppError(
+            "Account locked due to too many failed 2FA attempts. Try again in 15 minutes.",
+            423
+          )
+        );
+      }
+
       await user.save();
-
-      return next(new AppError("Invalid 2FA code or backup code", 401));
+      return next(new AppError("Invalid 2FA token", 401));
     }
 
-    // Successful verification
-    user.resetTwoFactorFailedAttempts();
-    user.updateTwoFactorUsage();
+    console.log("✅ 2FA verification successful");
 
-    // Handle device trust
-    if (trustDevice && req.headers["user-agent"]) {
-      const deviceId = generateDeviceId(req.headers["user-agent"], req.ip);
-      const deviceInfo = parseDeviceInfo(req.headers["user-agent"]);
+    // Reset failed attempts on successful verification
+    user.twoFactorAuth.failedAttempts = 0;
+    user.twoFactorAuth.lockUntil = undefined;
+    user.twoFactorAuth.lastUsed = new Date();
+    user.twoFactorAuth.totalUsage = (user.twoFactorAuth.totalUsage || 0) + 1;
 
-      user.addTrustedDevice({
-        deviceId,
-        deviceName: `${deviceInfo.browser} on ${deviceInfo.os}`,
-        userAgent: req.headers["user-agent"],
-        ipAddress: req.ip,
-      });
+    // Handle trusted device
+    let deviceInfo = null;
+    if (trustDevice) {
+      const userAgent = req.headers["user-agent"] || "Unknown";
+      const ipAddress = req.ip || req.connection.remoteAddress || "Unknown";
+
+      deviceInfo = {
+        id: new mongoose.Types.ObjectId(),
+        name: `Device from ${ipAddress}`,
+        userAgent,
+        ipAddress,
+        addedAt: new Date(),
+        lastUsed: new Date(),
+      };
+
+      user.twoFactorAuth.trustedDevices.push(deviceInfo);
+      console.log("✅ Device added to trusted devices");
     }
+
+    // Record successful login
+    await user.recordLogin(
+      req,
+      true,
+      isBackupCode ? "2FA backup code" : "2FA TOTP"
+    );
 
     await user.save();
 
-    console.log("✅ 2FA verification successful for user:", user.email);
+    // Generate tokens
+    const { generateTokens } = await import("../services/auth.service.js");
+    const tokens = generateTokens(user._id);
 
-    // Continue to complete login (handled by auth controller)
-    req.user = user;
-    req.verified2FA = true;
-    req.usedBackupCode = usedBackupCode;
+    console.log("✅ 2FA login completed successfully");
 
-    next(); // Continue to complete login
+    // Return success response
+    return res.status(200).json({
+      success: true,
+      message: "Login successful with 2FA verification",
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          accountStatus: user.accountStatus,
+          emailVerifiedAt: user.emailVerifiedAt,
+          twoFactorEnabled: user.twoFactorAuth?.isEnabled || false,
+        },
+        tokens,
+        twoFactorVerified: true,
+        usedBackupCode: isBackupCode,
+        trustedDevice: trustDevice
+          ? {
+              id: deviceInfo?.id,
+              name: deviceInfo?.name,
+            }
+          : null,
+        security: {
+          loginAt: new Date(),
+          ipAddress: req.ip || req.connection.remoteAddress,
+          userAgent: req.headers["user-agent"],
+        },
+      },
+    });
   } catch (error) {
     console.error("❌ 2FA Login Verification Error:", error);
     next(new AppError("2FA verification failed", 500));
