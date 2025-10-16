@@ -513,6 +513,39 @@ userSchema.methods.isDeviceTrusted = function (deviceId) {
   );
 };
 
+// *** Update 2FA Usage Stats ***
+userSchema.methods.updateTwoFactorUsage = function () {
+  this.twoFactorAuth.lastUsed = new Date();
+  this.twoFactorAuth.totalUsage += 1;
+  return this;
+};
+
+// *** Handle 2FA Failed Attempt ***
+userSchema.methods.handleTwoFactorFailedAttempt = function () {
+  this.twoFactorAuth.failedAttempts += 1;
+
+  // Lock 2FA for 15 minutes after 5 failed attempts
+  if (this.twoFactorAuth.failedAttempts >= 5) {
+    this.twoFactorAuth.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  }
+
+  return this;
+};
+
+// *** Reset 2FA Failed Attempts ***
+userSchema.methods.resetTwoFactorFailedAttempts = function () {
+  this.twoFactorAuth.failedAttempts = 0;
+  this.twoFactorAuth.lockUntil = undefined;
+  return this;
+};
+
+// *** Check if 2FA is Locked ***
+userSchema.methods.isTwoFactorLocked = function () {
+  return !!(
+    this.twoFactorAuth.lockUntil && this.twoFactorAuth.lockUntil > new Date()
+  );
+};
+
 // ==================== STATIC METHODS ====================
 // *** Find user by email (including unverified users) ***
 userSchema.statics.findByEmail = function (email) {
