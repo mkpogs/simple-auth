@@ -219,3 +219,87 @@ const analyzeTrustedDevices = (user) => {
         : [],
   };
 };
+
+// ========== ANALYZE LOGIN ACTIVITY ==========
+/**
+ * Analyze user's recent login activity
+ *
+ * WHAT IT SHOWS:
+ * - Recent logins with locations and device info
+ * - Success vs failed login attempts
+ * - Unusual activity patterns
+ */
+const analyzeLoginActivity = (user) => {
+  console.log("📊 Analyzing login activity...");
+
+  const loginHistory = user.loginHistory || [];
+  const recentLogins = loginHistory.slice(0, 10); // Last 10 logins
+
+  // Process each login for display
+  const processedLogins = recentLogins.map((login) => {
+    // Parse user agent
+    const parser = new UAParser();
+    parser.setUA(login.userAgent);
+    const uaResult = parser.getResult();
+
+    // Get location from IP
+    let location = { country: "Unknown", city: "Unknown" };
+    try {
+      const geo = geoip.lookup(login.ipAddress);
+      if (geo) {
+        location = {
+          country: geo.country || "Unknown",
+          city: geo.city || "Unknown",
+          region: geo.region || "Unknown",
+          flag: getCountryFlag(geo.country), // Helper function for country flags
+        };
+      }
+    } catch (error) {
+      console.log("Could not get location for login IP:", login.ipAddress);
+    }
+
+    return {
+      id: login._id,
+      loginAt: login.loginAt,
+      loginAgo: moment(login.loginAt).fromNow(),
+      success: login.success,
+      reason:
+        login.reason || (login.success ? "Login successful" : "Login failed"),
+      device: {
+        browser: uaResult.browser.name || "Unknown",
+        os: uaResult.os.name || "Unknown",
+        type: uaResult.device.type || "desktop",
+      },
+      location: location,
+      ipAddress: login.ipAddress,
+      isSuspicious: checkSuspiciousActivity(login, user),
+    };
+  });
+
+  // Calculate statistics
+  const successfulLogins = processedLogins.filter(
+    (login) => login.success
+  ).length;
+  const failedLogins = processedLogins.filter((login) => !login.success).length;
+  const suspiciousLogins = processedLogins.filter(
+    (login) => login.isSuspicious
+  ).length;
+
+  return {
+    recent: processedLogins,
+    statistics: {
+      total: processedLogins.length,
+      successful: successfulLogins,
+      failed: failedLogins,
+      suspicious: suspiciousLogins,
+      successRate:
+        processedLogins.length > 0
+          ? Math.round((successfulLogins / processedLogins.length) * 100)
+          : 0,
+    },
+    alerts:
+      suspiciousLogins > 0
+        ? [`${suspiciousLogins} potentially suspicious login(s) detected`]
+        : [],
+  };
+};
