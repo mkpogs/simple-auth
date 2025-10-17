@@ -303,3 +303,89 @@ const analyzeLoginActivity = (user) => {
         : [],
   };
 };
+
+// ========== CALCULATE SECURITY SCORE ==========
+/**
+ * Calculate user's security score (0-100)
+ *
+ * SCORING FACTORS:
+ * - 2FA enabled: +40 points
+ * - Strong password: +20 points
+ * - Email verified: +20 points
+ * - Recent activity: +10 points
+ * - Backup codes available: +10 points
+ */
+const calculateSecurityScore = (user) => {
+  console.log("📊 Calculating security score...");
+
+  let score = 0;
+  const breakdown = [];
+
+  // 2FA enabled (40 points)
+  if (user.twoFactorAuth?.isEnabled) {
+    score += 40;
+    breakdown.push({ factor: "2FA Enabled", points: 40, status: "good" });
+  } else {
+    breakdown.push({ factor: "2FA Disabled", points: 0, status: "warning" });
+  }
+
+  // Email verified (20 points)
+  if (user.isVerified) {
+    score += 20;
+    breakdown.push({ factor: "Email Verified", points: 20, status: "good" });
+  } else {
+    breakdown.push({
+      factor: "Email Not Verified",
+      points: 0,
+      status: "warning",
+    });
+  }
+
+  // Account status (20 points)
+  if (user.accountStatus === "active") {
+    score += 20;
+    breakdown.push({ factor: "Active Account", points: 20, status: "good" });
+  } else {
+    breakdown.push({ factor: "Account Issues", points: 0, status: "error" });
+  }
+
+  // Recent activity (10 points)
+  const lastLogin = user.loginHistory?.[0]?.loginAt;
+  if (lastLogin && moment(lastLogin).isAfter(moment().subtract(30, "days"))) {
+    score += 10;
+    breakdown.push({ factor: "Recent Activity", points: 10, status: "good" });
+  } else {
+    breakdown.push({ factor: "No Recent Activity", points: 0, status: "info" });
+  }
+
+  // Backup codes available (10 points)
+  const unusedBackupCodes =
+    user.twoFactorAuth?.backupCodes?.filter((code) => !code.used).length || 0;
+  if (unusedBackupCodes >= 5) {
+    score += 10;
+    breakdown.push({
+      factor: "Backup Codes Ready",
+      points: 10,
+      status: "good",
+    });
+  } else {
+    breakdown.push({
+      factor: "Few Backup Codes",
+      points: 0,
+      status: "warning",
+    });
+  }
+
+  // Determine security level
+  let level = "low";
+  if (score >= 80) level = "excellent";
+  else if (score >= 60) level = "good";
+  else if (score >= 40) level = "moderate";
+  else level = "low";
+
+  return {
+    score,
+    level,
+    breakdown,
+  };
+};
