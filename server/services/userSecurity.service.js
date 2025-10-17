@@ -86,3 +86,136 @@ export const getUserSecurityDashboard = async (userId) => {
     throw new AppError("Failed to load security dashboard", 500);
   }
 };
+
+// ===== ANALYZE 2FA STATUS =====
+/**
+ * Analyze user's two-factor authentication setup
+ *
+ * WHAT IT CHECKS:
+ * - Is 2FA enabled?
+ * - How many backup codes are left?
+ * - When was 2FA last used?
+ * - Any failed attempts recently?
+ */
+const analyzeTwoFactorStatus = (user) => {
+  console.log("🔐 Analyzing 2FA status...");
+
+  const twoFA = user.twoFactorAuth || {};
+
+  // Count backup codes
+  const backupCodes = twoFA.backupCodes || [];
+  const unusedBackupCodes = backupCodes.filter((code) => !code.used).length;
+  const usedBackupCodes = backupCodes.filter((code) => code.used).length;
+
+  // Check if 2FA needs attention
+  const needsAttention = !twoFA.isEnabled || unusedBackupCodes < 3;
+
+  return {
+    isEnabled: twoFA.isEnabled || false,
+    setupAt: twoFA.setupAt || null,
+    lastUsed: twoFA.lastUsed || null,
+    totalUsage: twoFA.totalUsage || 0,
+    backupCodes: {
+      total: backupCodes.length,
+      unused: unusedBackupCodes,
+      used: usedBackupCodes,
+      needsRegeneration: unusedBackupCodes < 3,
+    },
+    security: {
+      failedAttempts: twoFA.failedAttempts || 0,
+      isLocked: !!(twoFA.lockedUntil && twoFA.lockedUntil > new Date()),
+      lockUntil: twoFA.lockedUntil || null,
+    },
+    status: {
+      needsAttention,
+      message: needsAttention
+        ? twoFA.isEnabled
+          ? "Consider regenerating backup codes"
+          : "Enable 2FA for better security"
+        : "Your 2FA setup looks good!",
+    },
+  };
+};
+
+// ========== ANALYZE TRUSTED DEVICES ==========
+/**
+ * Analyze user's trusted devices
+ *
+ * WHAT IT RETURNS:
+ * - List of all trusted devices with details
+ * - Device usage statistics
+ * - Devices that haven't been used recently (cleanup suggestions)
+ */
+const analyzeTrustedDevices = (user) => {
+  console.log("📱 Analyzing trusted devices...");
+
+  const trustedDevices = user.twoFactorAuth?.trustedDevices || [];
+  const activeDevices = trustedDevices.filter((device) => device.isActive);
+
+  // Parse device information for better display
+  const devicesWithDetails = activeDevices.map((device) => {
+    const parser = new UAParser();
+    parser.setUA(device.userAgent);
+    const uaResult = parser.getResult();
+
+    // Get location from IP (if possible)
+    let location = { country: "Unknown", city: "Unknown" };
+    try {
+      const geo = geoip.lookup(device.ipAddress);
+      if (geo) {
+        location = {
+          country: geo.country || "Unknown",
+          city: geo.city || "Unknown",
+          region: geo.region || "Unknown",
+        };
+      }
+    } catch (error) {
+      console.log("Could not get location for IP:", device.ipAddress);
+    }
+
+    // Calculate how long ago device was last used
+    const lastUsedAgo = moment(device.lastUsed).fromNow();
+    const isRecent = moment(device.lastUsed).isAfter(
+      moment().subtract(7, "days")
+    );
+
+    return {
+      id: device._id || device.deviceId,
+      name:
+        device.deviceName || `${uaResult.browser.name} on ${uaResult.os.name}`,
+      browser: uaResult.browser.name || "Unknown",
+      os: uaResult.os.name || "Unknown",
+      deviceType: uaResult.device.type || "desktop",
+      location: location,
+      ipAddress: device.ipAddress,
+      trustedAt: device.trustedAt,
+      lastUsed: device.lastUsed,
+      lastUsedAgo: lastUsedAgo,
+      isRecent: isRecent,
+      isActive: device.isActive,
+    };
+  });
+
+  // Find old devices (not used in 30+ days)
+  const oldDevices = devicesWithDetails.filter((device) =>
+    moment(device.lastUsed).isBefore(moment().subtract(30, "days"))
+  );
+
+  return {
+    total: trustedDevices.length,
+    active: activeDevices.length,
+    inactive: trustedDevices.length - activeDevices.length,
+    devices: devicesWithDetails,
+    analytics: {
+      oldDevices: oldDevices.length,
+      recentDevices: devicesWithDetails.filter((d) => d.isRecent).length,
+      needsCleanup: oldDevices.length > 0,
+    },
+    recommendations:
+      oldDevices.length > 0
+        ? [
+            `Consider removing ${oldDevices.length} old device(s) that haven't been used recently`,
+          ]
+        : [],
+  };
+};
