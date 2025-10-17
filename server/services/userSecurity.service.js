@@ -389,3 +389,68 @@ const calculateSecurityScore = (user) => {
     breakdown,
   };
 };
+
+// ========== GENERATE SECURITY RECOMMENDATIONS ==========
+/**
+ * Generate personalized security recommendations
+ */
+const generateSecurityRecommendations = (user) => {
+  console.log("💡 Generating security recommendations...");
+
+  const recommendations = [];
+
+  // 2FA recommendations
+  if (!user.twoFactorAuth?.isEnabled) {
+    recommendations.push({
+      type: "critical",
+      title: "Enable Two-Factor Authentication",
+      description: "Add an extra layer of security to your account",
+      action: "enable_2fa",
+      priority: 1,
+    });
+  }
+
+  // Backup codes recommendations
+  const unusedBackupCodes =
+    user.twoFactorAuth?.backupCodes?.filter((code) => !code.used).length || 0;
+  if (user.twoFactorAuth?.isEnabled && unusedBackupCodes < 3) {
+    recommendations.push({
+      type: "warning",
+      title: "Regenerate Backup Codes",
+      description: "You have few backup codes left. Generate new ones.",
+      action: "regenerate_backup_codes",
+      priority: 2,
+    });
+  }
+
+  // Email verification
+  if (!user.isVerified) {
+    recommendations.push({
+      type: "warning",
+      title: "Verify Your Email",
+      description: "Verify your email address to secure your account",
+      action: "verify_email",
+      priority: 3,
+    });
+  }
+
+  // Trusted devices cleanup
+  const oldDevices =
+    user.twoFactorAuth?.trustedDevices?.filter(
+      (device) =>
+        device.isActive &&
+        moment(device.lastUsed).isBefore(moment().subtract(30, "days"))
+    ).length || 0;
+
+  if (oldDevices > 0) {
+    recommendations.push({
+      type: "info",
+      title: "Clean Up Old Devices",
+      description: `Remove ${oldDevices} device(s) you no longer use`,
+      action: "manage_devices",
+      priority: 4,
+    });
+  }
+
+  return recommendations.sort((a, b) => a.priority - b.priority);
+};
