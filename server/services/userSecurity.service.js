@@ -454,3 +454,64 @@ const generateSecurityRecommendations = (user) => {
 
   return recommendations.sort((a, b) => a.priority - b.priority);
 };
+
+// ========== HELPER FUNCTIONS ==========
+/**
+ * Get country flag emoji from country code
+ */
+const getCountryFlag = (countryCode) => {
+  const flags = {
+    US: "🇺🇸",
+    CA: "🇨🇦",
+    GB: "🇬🇧",
+    DE: "🇩🇪",
+    FR: "🇫🇷",
+    AU: "🇦🇺",
+    JP: "🇯🇵",
+    CN: "🇨🇳",
+    IN: "🇮🇳",
+    BR: "🇧🇷",
+    PH: "🇵🇭",
+  };
+  return flags[countryCode] || "🌍";
+};
+
+/**
+ * Check if login activity seems suspicious
+ */
+const checkSuspiciousActivity = (login, user) => {
+  // Simple suspicious activity detection
+  const recentLogins = user.loginHistory?.slice(0, 5) || [];
+
+  // Check for failed login attempts
+  if (!login.success) return true;
+
+  // Check for login from new country (simplified)
+  const userIPs = recentLogins.map((l) => l.ipAddress);
+  const ipCountries = userIPs
+    .map((ip) => {
+      try {
+        const geo = geoip.lookup(ip);
+        return geo?.country;
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+
+  const currentCountry = (() => {
+    try {
+      const geo = geoip.lookup(login.ipAddress);
+      return geo?.country;
+    } catch {
+      return null;
+    }
+  })();
+
+  // If login from new country, mark as suspicious
+  if (currentCountry && !ipCountries.includes(currentCountry)) {
+    return true;
+  }
+
+  return false;
+};
