@@ -346,3 +346,58 @@ export const removeTrustedDevice = async (req, res, next) => {
     next(new AppError("Failed to remove trusted device", 500));
   }
 };
+
+// ===== SECURITY SETTINGS =====
+/**
+ * GET /api/users/security/settings
+ *
+ * PURPOSE: Get current security settings summary
+ */
+export const getSecuritySettings = async (req, res, next) => {
+  try {
+    console.log("⚙️ Security settings request from user:", req.user.email);
+
+    const user = await User.findById(req.user._id).select("+twoFactorAuth");
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    const twoFA = user.twoFactorAuth || {};
+    const backupCodes = twoFA.backupCodes || [];
+    const trustedDevices = twoFA.trustedDevices || [];
+
+    const settings = {
+      account: {
+        email: user.email,
+        isVerified: user.isVerified,
+        accountStatus: user.accountStatus,
+        createdAt: user.createdAt,
+      },
+      twoFactor: {
+        isEnabled: twoFA.isEnabled || false,
+        setupAt: twoFA.setupAt || null,
+        lastUsed: twoFA.lastUsed || null,
+        backupCodesCount: backupCodes.filter((code) => !code.used).length,
+        trustedDevicesCount: trustedDevices.filter((device) => device.isActive)
+          .length,
+      },
+      security: {
+        lastPasswordChange: user.passwordChangedAt || user.createdAt,
+        failedLoginAttempts: user.failedLoginAttempts || 0,
+        isLocked: !!(user.lockUntil && user.lockUntil > new Date()),
+      },
+    };
+
+    console.log("✅ Security settings retrieved");
+
+    return res.status(200).json({
+      success: true,
+      message: "Security settings retrieved successfully",
+      data: settings,
+    });
+  } catch (error) {
+    console.error("❌ Get Security Settings Error:", error);
+    next(new AppError("Failed to retrieve security settings", 500));
+  }
+};
