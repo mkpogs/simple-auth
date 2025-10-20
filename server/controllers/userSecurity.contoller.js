@@ -401,3 +401,28 @@ export const getSecuritySettings = async (req, res, next) => {
     next(new AppError("Failed to retrieve security settings", 500));
   }
 };
+
+// ===== HELPER FUNCTIONS =====
+/**
+ * Get country flag emoji from country code
+ */
+const getCountryFlag = (countryCode) => {
+  const flags = {
+    US: "🇺🇸",
+    CA: "🇨🇦",
+    GB: "🇬🇧",
+    DE: "🇩🇪",
+    FR: "🇫🇷",
+    AU: "🇦🇺",
+    JP: "🇯🇵",
+    CN: "🇨🇳",
+    IN: "🇮🇳",
+    BR: "🇧🇷",
+    PH: "🇵🇭",
+    MX: "🇲🇽",
+    IT: "🇮🇹",
+    ES: "🇪🇸",
+    RU: "🇷🇺",
+  };
+  return flags[countryCode] || "🌍";
+};
