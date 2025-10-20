@@ -1,5 +1,5 @@
 import moment from "moment";
-import UAParser from "ua-parser-js";
+import { UAParser } from "ua-parser-js";
 import geoip from "geoip-lite";
 import User from "../models/User.model.js";
 import AppError from "../utils/AppError.js";
@@ -8,106 +8,110 @@ import AppError from "../utils/AppError.js";
  * User Security Dashboard Service
  *
  * Simple Explanation:
- * This service hepls users manage their own security settings:
+ * This service helps users manage their own security settings:
  *  - View their 2FA status and trusted devices
  *  - See their recent login activity with locations
  *  - Manage their security preferences
  *  - Get security recommendations
  *
  * WHY WE NEED THIS:
- *  - Users want control over  their own security
- *  - Transparency builds trust ("show me  what you know  about me")
+ *  - Users want control over their own security
+ *  - Transparency builds trust ("show me what you know about me")
  *  - Helps users spot suspicious activity
- *  - Industry standard (Github, Google, facebook all have similar features)
+ *  - Industry standard (Github, Google, Facebook all have similar features)
  */
 
 // ===== GET USER'S SECURITY OVERVIEW =====
 /**
- * Get comprehensive security dashboard for user
+ * Main function to generate comprehensive security dashboard
  *
- * WHAT IT RETURNS:
- *  - 2FA status and backup codes count
- *  - Trusted devices list
- *  - Recent login activity with locations
- *  - Security score and recommendations
+ * WHAT IT DOES:
+ *  1. Fetches user data with all security fields
+ *  2. Analyzes different security aspects separately
+ *  3. Calculates overall security score
+ *  4. Generates personalized recommendations
+ *  5. Returns structured dashboard data
+ *
+ * WHY WE ANALYZE SEPARATELY:
+ *  - Each aspect has different scoring criteria
+ *  - Makes it easier to add new security features
+ *  - Users can see exactly what affects their score
  */
 export const getUserSecurityDashboard = async (userId) => {
   try {
-    console.log("🛡️ Getting security dashboard for user:", userId);
+    console.log("🛡️ Generating security dashboard for user:", userId);
 
-    // Step 1: get userwith all security-related data
-    const user = await User.findById(userId)
-      .select("+twoFactorAuth +loginHistory")
-      .populate("loginHistory", null, null, {
-        sort: { loginAt: -1 },
-        limit: 10, // Last 1 logins
-      });
+    // Get user with all security-related data
+    // We use .select("+field") to include fields that are normally excluded
+    const user = await User.findById(userId).select(
+      "+twoFactorAuth +loginHistory +passwordChangedAt +failedLoginAttempts +lockUntil"
+    );
 
     if (!user) {
       throw new AppError("User not found", 404);
     }
 
-    // Step 2: Analyze 2FA status
-    const twoFactorStatus = analyzeTwoFactorStatus(user);
-
-    // Step 3: Analyze trusted devices
-    const trustedDevicesInfo = analyzeTrustedDevices(user);
-
-    // Step 4: Analyze recent login activity
-    const loginActivity = analyzeLoginActivity(user);
-
-    // Step 5: Calculate security score
+    // Analyze different security aspects
+    // Each function focuses on one security area for better organization
+    const twoFactorAnalysis = analyzeTwoFactorStatus(user);
+    const trustedDevicesAnalysis = analyzeTrustedDevices(user);
+    const loginActivityAnalysis = analyzeLoginActivity(user);
     const securityScore = calculateSecurityScore(user);
-
-    // Step 6: Generate security recommendations
     const recommendations = generateSecurityRecommendations(user);
 
     console.log("✅ Security dashboard generated successfully");
 
+    // Return structured dashboard with all security insights
     return {
       overview: {
-        securityScore: securityScore.score,
-        lastLoginAt: user.loginHistory?.[0]?.loginAt || null,
-        totalLogins: user.loginHistory?.length || 0,
-        accountCreated: user.createdAt,
+        securityScore,
+        recommendations,
+        lastLoginAt: user.lastLoginAt,
+        accountCreatedAt: user.createdAt,
       },
-      twoFactor: twoFactorStatus,
-      trustedDevices: trustedDevicesInfo,
-      recentActivity: loginActivity,
-      securityAnalysis: {
-        score: securityScore.score,
-        level: securityScore.level,
-        breakdown: securityScore.breakdown,
+      twoFactor: twoFactorAnalysis,
+      trustedDevices: trustedDevicesAnalysis,
+      loginActivity: loginActivityAnalysis,
+      account: {
+        isVerified: user.isVerified,
+        accountStatus: user.accountStatus,
+        lastPasswordChange: user.passwordChangedAt || user.createdAt,
+        failedLoginAttempts: user.failedLoginAttempts || 0,
+        isLocked: !!(user.lockUntil && user.lockUntil > new Date()),
       },
-      recommendations: recommendations,
     };
   } catch (error) {
-    console.error("❌ Get Security Dashboard Error:", error);
-    throw new AppError("Failed to load security dashboard", 500);
+    console.error("❌ Error generating security dashboard:", error);
+    throw new AppError("Failed to generate security dashboard", 500);
   }
 };
 
 // ===== ANALYZE 2FA STATUS =====
 /**
- * Analyze user's two-factor authentication setup
+ * Analyze user's Two-Factor Authentication setup and usage
  *
  * WHAT IT CHECKS:
- * - Is 2FA enabled?
- * - How many backup codes are left?
- * - When was 2FA last used?
- * - Any failed attempts recently?
+ *  - Is 2FA enabled and when was it set up?
+ *  - How many backup codes are left?
+ *  - Any failed 2FA attempts or lockouts?
+ *  - Does the setup need attention?
+ *
+ * WHY THIS MATTERS:
+ *  - 2FA is the most important security feature
+ *  - Users need to know if backup codes are running low
+ *  - Failed attempts might indicate attacks
  */
 const analyzeTwoFactorStatus = (user) => {
   console.log("🔐 Analyzing 2FA status...");
 
   const twoFA = user.twoFactorAuth || {};
-
-  // Count backup codes
   const backupCodes = twoFA.backupCodes || [];
+
+  // Count unused vs used backup codes
   const unusedBackupCodes = backupCodes.filter((code) => !code.used).length;
   const usedBackupCodes = backupCodes.filter((code) => code.used).length;
 
-  // Check if 2FA needs attention
+  // Determine if 2FA setup needs attention
   const needsAttention = !twoFA.isEnabled || unusedBackupCodes < 3;
 
   return {
@@ -139,12 +143,18 @@ const analyzeTwoFactorStatus = (user) => {
 
 // ========== ANALYZE TRUSTED DEVICES ==========
 /**
- * Analyze user's trusted devices
+ * Analyze user's trusted devices for 2FA bypass
  *
- * WHAT IT RETURNS:
- * - List of all trusted devices with details
- * - Device usage statistics
- * - Devices that haven't been used recently (cleanup suggestions)
+ * WHAT IT DOES:
+ *  - Parses device information (browser, OS, type)
+ *  - Gets geographic location from IP addresses
+ *  - Identifies old devices that haven't been used recently
+ *  - Provides recommendations for device cleanup
+ *
+ * WHY DEVICE ANALYSIS MATTERS:
+ *  - Old devices might be security risks
+ *  - Users should know what devices have access
+ *  - Geographic info helps spot suspicious access
  */
 const analyzeTrustedDevices = (user) => {
   console.log("📱 Analyzing trusted devices...");
@@ -152,13 +162,13 @@ const analyzeTrustedDevices = (user) => {
   const trustedDevices = user.twoFactorAuth?.trustedDevices || [];
   const activeDevices = trustedDevices.filter((device) => device.isActive);
 
-  // Parse device information for better display
+  // Process each device to extract detailed information
   const devicesWithDetails = activeDevices.map((device) => {
-    const parser = new UAParser();
-    parser.setUA(device.userAgent);
+    // Parse user agent string to get browser and OS info
+    const parser = new UAParser(device.userAgent);
     const uaResult = parser.getResult();
 
-    // Get location from IP (if possible)
+    // Try to get geographic location from IP address
     let location = { country: "Unknown", city: "Unknown" };
     try {
       const geo = geoip.lookup(device.ipAddress);
@@ -167,17 +177,12 @@ const analyzeTrustedDevices = (user) => {
           country: geo.country || "Unknown",
           city: geo.city || "Unknown",
           region: geo.region || "Unknown",
+          flag: getCountryFlag(geo.country),
         };
       }
     } catch (error) {
-      console.log("Could not get location for IP:", device.ipAddress);
+      console.log("Could not get location for device IP:", device.ipAddress);
     }
-
-    // Calculate how long ago device was last used
-    const lastUsedAgo = moment(device.lastUsed).fromNow();
-    const isRecent = moment(device.lastUsed).isAfter(
-      moment().subtract(7, "days")
-    );
 
     return {
       id: device._id || device.deviceId,
@@ -186,17 +191,17 @@ const analyzeTrustedDevices = (user) => {
       browser: uaResult.browser.name || "Unknown",
       os: uaResult.os.name || "Unknown",
       deviceType: uaResult.device.type || "desktop",
-      location: location,
+      location,
       ipAddress: device.ipAddress,
       trustedAt: device.trustedAt,
       lastUsed: device.lastUsed,
-      lastUsedAgo: lastUsedAgo,
-      isRecent: isRecent,
+      lastUsedAgo: moment(device.lastUsed).fromNow(),
+      isRecent: moment(device.lastUsed).isAfter(moment().subtract(7, "days")),
       isActive: device.isActive,
     };
   });
 
-  // Find old devices (not used in 30+ days)
+  // Find devices that haven't been used in 30+ days (potential security risk)
   const oldDevices = devicesWithDetails.filter((device) =>
     moment(device.lastUsed).isBefore(moment().subtract(30, "days"))
   );
@@ -222,27 +227,32 @@ const analyzeTrustedDevices = (user) => {
 
 // ========== ANALYZE LOGIN ACTIVITY ==========
 /**
- * Analyze user's recent login activity
+ * Analyze user's recent login history and patterns
  *
- * WHAT IT SHOWS:
- * - Recent logins with locations and device info
- * - Success vs failed login attempts
- * - Unusual activity patterns
+ * WHAT IT ANALYZES:
+ *  - Recent login attempts (successful and failed)
+ *  - Device and location information for each login
+ *  - Success rate and suspicious activity patterns
+ *  - Most used devices and common locations
+ *
+ * SECURITY INSIGHTS:
+ *  - Failed logins might indicate attack attempts
+ *  - Logins from new locations could be suspicious
+ *  - Multiple IPs in short time span is a red flag
  */
 const analyzeLoginActivity = (user) => {
   console.log("📊 Analyzing login activity...");
 
   const loginHistory = user.loginHistory || [];
-  const recentLogins = loginHistory.slice(0, 10); // Last 10 logins
+  const recentLogins = loginHistory.slice(0, 10); // Get last 10 logins
 
-  // Process each login for display
+  // Process each login to extract device and location information
   const processedLogins = recentLogins.map((login) => {
-    // Parse user agent
-    const parser = new UAParser();
-    parser.setUA(login.userAgent);
+    // Parse user agent to identify device details
+    const parser = new UAParser(login.userAgent);
     const uaResult = parser.getResult();
 
-    // Get location from IP
+    // Get geographic location from IP address
     let location = { country: "Unknown", city: "Unknown" };
     try {
       const geo = geoip.lookup(login.ipAddress);
@@ -251,7 +261,7 @@ const analyzeLoginActivity = (user) => {
           country: geo.country || "Unknown",
           city: geo.city || "Unknown",
           region: geo.region || "Unknown",
-          flag: getCountryFlag(geo.country), // Helper function for country flags
+          flag: getCountryFlag(geo.country),
         };
       }
     } catch (error) {
@@ -270,13 +280,13 @@ const analyzeLoginActivity = (user) => {
         os: uaResult.os.name || "Unknown",
         type: uaResult.device.type || "desktop",
       },
-      location: location,
+      location,
       ipAddress: login.ipAddress,
       isSuspicious: checkSuspiciousActivity(login, user),
     };
   });
 
-  // Calculate statistics
+  // Calculate login statistics for insights
   const successfulLogins = processedLogins.filter(
     (login) => login.success
   ).length;
@@ -286,178 +296,253 @@ const analyzeLoginActivity = (user) => {
   ).length;
 
   return {
-    recent: processedLogins,
+    recentLogins: processedLogins,
     statistics: {
-      total: processedLogins.length,
+      total: loginHistory.length,
       successful: successfulLogins,
       failed: failedLogins,
       suspicious: suspiciousLogins,
       successRate:
-        processedLogins.length > 0
-          ? Math.round((successfulLogins / processedLogins.length) * 100)
+        recentLogins.length > 0
+          ? Math.round((successfulLogins / recentLogins.length) * 100)
           : 0,
     },
-    alerts:
-      suspiciousLogins > 0
-        ? [`${suspiciousLogins} potentially suspicious login(s) detected`]
-        : [],
+    insights: {
+      mostUsedDevice: getMostUsedDevice(processedLogins),
+      mostCommonLocation: getMostCommonLocation(processedLogins),
+      unusualActivity: suspiciousLogins > 0,
+    },
   };
 };
 
 // ========== CALCULATE SECURITY SCORE ==========
 /**
- * Calculate user's security score (0-100)
+ * Calculate overall security score based on multiple factors
  *
- * SCORING FACTORS:
- * - 2FA enabled: +40 points
- * - Strong password: +20 points
- * - Email verified: +20 points
- * - Recent activity: +10 points
- * - Backup codes available: +10 points
+ * SCORING SYSTEM (out of 100):
+ *  - Two-Factor Authentication: 40 points (most important)
+ *  - Email Verification: 20 points
+ *  - Recent Password Change: 15 points
+ *  - Account Security (not locked): 10 points
+ *  - Recent Activity: 10 points
+ *  - Backup Codes Available: 5 points
+ *
+ * WHY WEIGHTED SCORING:
+ *  - 2FA provides the biggest security boost
+ *  - Email verification prevents account takeover
+ *  - Regular password updates reduce breach impact
  */
 const calculateSecurityScore = (user) => {
-  console.log("📊 Calculating security score...");
-
   let score = 0;
-  const breakdown = [];
+  const factors = [];
 
-  // 2FA enabled (40 points)
+  // 2FA enabled (40 points) - Most important security factor
   if (user.twoFactorAuth?.isEnabled) {
     score += 40;
-    breakdown.push({ factor: "2FA Enabled", points: 40, status: "good" });
+    factors.push({
+      factor: "Two-Factor Authentication",
+      points: 40,
+      status: "✅",
+    });
   } else {
-    breakdown.push({ factor: "2FA Disabled", points: 0, status: "warning" });
+    factors.push({
+      factor: "Two-Factor Authentication",
+      points: 0,
+      status: "❌",
+    });
   }
 
-  // Email verified (20 points)
+  // Email verified (20 points) - Prevents account takeover
   if (user.isVerified) {
     score += 20;
-    breakdown.push({ factor: "Email Verified", points: 20, status: "good" });
+    factors.push({ factor: "Email Verification", points: 20, status: "✅" });
   } else {
-    breakdown.push({
-      factor: "Email Not Verified",
-      points: 0,
-      status: "warning",
+    factors.push({ factor: "Email Verification", points: 0, status: "❌" });
+  }
+
+  // Recent password change (15 points) - Reduces breach impact
+  const passwordAge = user.passwordChangedAt
+    ? moment().diff(moment(user.passwordChangedAt), "days")
+    : moment().diff(moment(user.createdAt), "days");
+
+  if (passwordAge < 90) {
+    score += 15;
+    factors.push({
+      factor: "Recent Password Change",
+      points: 15,
+      status: "✅",
     });
-  }
-
-  // Account status (20 points)
-  if (user.accountStatus === "active") {
-    score += 20;
-    breakdown.push({ factor: "Active Account", points: 20, status: "good" });
   } else {
-    breakdown.push({ factor: "Account Issues", points: 0, status: "error" });
+    factors.push({ factor: "Recent Password Change", points: 0, status: "❌" });
   }
 
-  // Recent activity (10 points)
-  const lastLogin = user.loginHistory?.[0]?.loginAt;
-  if (lastLogin && moment(lastLogin).isAfter(moment().subtract(30, "days"))) {
+  // Account not locked (10 points) - Shows good security practices
+  if (!(user.lockUntil && user.lockUntil > new Date())) {
     score += 10;
-    breakdown.push({ factor: "Recent Activity", points: 10, status: "good" });
+    factors.push({ factor: "Account Security", points: 10, status: "✅" });
   } else {
-    breakdown.push({ factor: "No Recent Activity", points: 0, status: "info" });
+    factors.push({ factor: "Account Security", points: 0, status: "❌" });
   }
 
-  // Backup codes available (10 points)
-  const unusedBackupCodes =
-    user.twoFactorAuth?.backupCodes?.filter((code) => !code.used).length || 0;
-  if (unusedBackupCodes >= 5) {
+  // Recent activity (10 points) - Active accounts are better monitored
+  if (
+    user.lastLoginAt &&
+    moment().diff(moment(user.lastLoginAt), "days") < 30
+  ) {
     score += 10;
-    breakdown.push({
-      factor: "Backup Codes Ready",
-      points: 10,
-      status: "good",
-    });
+    factors.push({ factor: "Recent Activity", points: 10, status: "✅" });
   } else {
-    breakdown.push({
-      factor: "Few Backup Codes",
-      points: 0,
-      status: "warning",
-    });
+    factors.push({ factor: "Recent Activity", points: 0, status: "❌" });
   }
 
-  // Determine security level
-  let level = "low";
-  if (score >= 80) level = "excellent";
-  else if (score >= 60) level = "good";
-  else if (score >= 40) level = "moderate";
-  else level = "low";
+  // Backup codes available (5 points) - Ensures 2FA recovery options
+  const backupCodes = user.twoFactorAuth?.backupCodes || [];
+  const unusedCodes = backupCodes.filter((code) => !code.used).length;
+  if (unusedCodes >= 3) {
+    score += 5;
+    factors.push({ factor: "Backup Codes Available", points: 5, status: "✅" });
+  } else {
+    factors.push({ factor: "Backup Codes Available", points: 0, status: "❌" });
+  }
+
+  // Determine grade and message based on score
+  let grade = "F";
+  let color = "#ff4444";
+  let message = "Critical security issues need attention";
+
+  if (score >= 90) {
+    grade = "A+";
+    color = "#00aa00";
+    message = "Excellent security setup!";
+  } else if (score >= 80) {
+    grade = "A";
+    color = "#44aa00";
+    message = "Very good security setup";
+  } else if (score >= 70) {
+    grade = "B";
+    color = "#88aa00";
+    message = "Good security, minor improvements possible";
+  } else if (score >= 60) {
+    grade = "C";
+    color = "#aaaa00";
+    message = "Moderate security, improvements recommended";
+  } else if (score >= 50) {
+    grade = "D";
+    color = "#aa4400";
+    message = "Poor security, immediate action needed";
+  }
 
   return {
     score,
-    level,
-    breakdown,
+    grade,
+    color,
+    message,
+    factors,
+    maxScore: 100,
   };
 };
 
 // ========== GENERATE SECURITY RECOMMENDATIONS ==========
 /**
- * Generate personalized security recommendations
+ * Generate personalized security recommendations based on user's current setup
+ *
+ * RECOMMENDATION PRIORITIES:
+ *  - High: Critical security features missing (2FA, email verification)
+ *  - Medium: Important improvements (password age, backup codes)
+ *  - Low: Good practices (device cleanup, regular reviews)
+ *
+ * WHY PERSONALIZED RECOMMENDATIONS:
+ *  - Users get overwhelmed by generic advice
+ *  - Specific actions are more likely to be taken
+ *  - Priority system helps users focus on what matters most
  */
 const generateSecurityRecommendations = (user) => {
-  console.log("💡 Generating security recommendations...");
-
   const recommendations = [];
 
-  // 2FA recommendations
+  // 2FA recommendation (HIGH PRIORITY)
+  // Most important security improvement for any account
   if (!user.twoFactorAuth?.isEnabled) {
     recommendations.push({
-      type: "critical",
+      priority: "high",
+      category: "authentication",
       title: "Enable Two-Factor Authentication",
       description: "Add an extra layer of security to your account",
-      action: "enable_2fa",
-      priority: 1,
+      action: "Enable 2FA",
+      icon: "🔐",
     });
   }
 
-  // Backup codes recommendations
-  const unusedBackupCodes =
-    user.twoFactorAuth?.backupCodes?.filter((code) => !code.used).length || 0;
-  if (user.twoFactorAuth?.isEnabled && unusedBackupCodes < 3) {
-    recommendations.push({
-      type: "warning",
-      title: "Regenerate Backup Codes",
-      description: "You have few backup codes left. Generate new ones.",
-      action: "regenerate_backup_codes",
-      priority: 2,
-    });
-  }
-
-  // Email verification
+  // Email verification (HIGH PRIORITY)
+  // Prevents account takeover and enables password resets
   if (!user.isVerified) {
     recommendations.push({
-      type: "warning",
+      priority: "high",
+      category: "verification",
       title: "Verify Your Email",
-      description: "Verify your email address to secure your account",
-      action: "verify_email",
-      priority: 3,
+      description: "Confirm your email address to secure your account",
+      action: "Verify Email",
+      icon: "📧",
     });
   }
 
-  // Trusted devices cleanup
-  const oldDevices =
-    user.twoFactorAuth?.trustedDevices?.filter(
-      (device) =>
-        device.isActive &&
-        moment(device.lastUsed).isBefore(moment().subtract(30, "days"))
-    ).length || 0;
+  // Password change (MEDIUM PRIORITY)
+  // Regular password updates reduce breach impact
+  const passwordAge = user.passwordChangedAt
+    ? moment().diff(moment(user.passwordChangedAt), "days")
+    : moment().diff(moment(user.createdAt), "days");
 
-  if (oldDevices > 0) {
+  if (passwordAge > 90) {
     recommendations.push({
-      type: "info",
-      title: "Clean Up Old Devices",
-      description: `Remove ${oldDevices} device(s) you no longer use`,
-      action: "manage_devices",
-      priority: 4,
+      priority: "medium",
+      category: "password",
+      title: "Update Your Password",
+      description: `Your password is ${passwordAge} days old`,
+      action: "Change Password",
+      icon: "🔑",
     });
   }
 
-  return recommendations.sort((a, b) => a.priority - b.priority);
+  // Backup codes (MEDIUM PRIORITY)
+  // Ensures users can recover if they lose 2FA device
+  const backupCodes = user.twoFactorAuth?.backupCodes || [];
+  const unusedCodes = backupCodes.filter((code) => !code.used).length;
+  if (user.twoFactorAuth?.isEnabled && unusedCodes < 3) {
+    recommendations.push({
+      priority: "medium",
+      category: "backup",
+      title: "Regenerate Backup Codes",
+      description: `You have only ${unusedCodes} backup codes left`,
+      action: "Generate New Codes",
+      icon: "💾",
+    });
+  }
+
+  // Trusted devices cleanup (LOW PRIORITY)
+  // Removes potential security risks from old devices
+  const trustedDevices = user.twoFactorAuth?.trustedDevices || [];
+  const oldDevices = trustedDevices.filter((device) =>
+    moment(device.lastUsed).isBefore(moment().subtract(30, "days"))
+  );
+
+  if (oldDevices.length > 0) {
+    recommendations.push({
+      priority: "low",
+      category: "devices",
+      title: "Review Trusted Devices",
+      description: `${oldDevices.length} devices haven't been used recently`,
+      action: "Manage Devices",
+      icon: "📱",
+    });
+  }
+
+  return recommendations;
 };
 
 // ========== HELPER FUNCTIONS ==========
+
 /**
  * Get country flag emoji from country code
+ * Used to make location information more visual and user-friendly
  */
 const getCountryFlag = (countryCode) => {
   const flags = {
@@ -472,46 +557,68 @@ const getCountryFlag = (countryCode) => {
     IN: "🇮🇳",
     BR: "🇧🇷",
     PH: "🇵🇭",
+    MX: "🇲🇽",
+    IT: "🇮🇹",
+    ES: "🇪🇸",
+    RU: "🇷🇺",
   };
   return flags[countryCode] || "🌍";
 };
 
 /**
- * Check if login activity seems suspicious
+ * Simple suspicious activity detection
+ *
+ * WHAT MAKES ACTIVITY SUSPICIOUS:
+ *  - Multiple different IP addresses in recent logins
+ *  - Failed login attempts
+ *  - Could be enhanced with more sophisticated algorithms
+ *
+ * WHY SIMPLE DETECTION:
+ *  - Complex algorithms can have false positives
+ *  - Simple rules catch obvious attack patterns
+ *  - Can be enhanced based on user feedback
  */
 const checkSuspiciousActivity = (login, user) => {
-  // Simple suspicious activity detection
   const recentLogins = user.loginHistory?.slice(0, 5) || [];
+  const uniqueIPs = [...new Set(recentLogins.map((l) => l.ipAddress))];
 
-  // Check for failed login attempts
+  // Multiple IPs in short time span could indicate credential sharing or attacks
+  if (uniqueIPs.length > 3) return true;
+
+  // Failed login attempt is always suspicious
   if (!login.success) return true;
 
-  // Check for login from new country (simplified)
-  const userIPs = recentLogins.map((l) => l.ipAddress);
-  const ipCountries = userIPs
-    .map((ip) => {
-      try {
-        const geo = geoip.lookup(ip);
-        return geo?.country;
-      } catch {
-        return null;
-      }
-    })
-    .filter(Boolean);
-
-  const currentCountry = (() => {
-    try {
-      const geo = geoip.lookup(login.ipAddress);
-      return geo?.country;
-    } catch {
-      return null;
-    }
-  })();
-
-  // If login from new country, mark as suspicious
-  if (currentCountry && !ipCountries.includes(currentCountry)) {
-    return true;
-  }
-
   return false;
+};
+
+/**
+ * Find the most frequently used device from login history
+ * Helps users identify their primary device for security decisions
+ */
+const getMostUsedDevice = (logins) => {
+  const deviceCounts = {};
+  logins.forEach((login) => {
+    const deviceKey = `${login.device.browser} on ${login.device.os}`;
+    deviceCounts[deviceKey] = (deviceCounts[deviceKey] || 0) + 1;
+  });
+
+  const mostUsed = Object.entries(deviceCounts).sort((a, b) => b[1] - a[1])[0];
+  return mostUsed ? mostUsed[0] : "Unknown";
+};
+
+/**
+ * Find the most common login location
+ * Helps users identify their typical login patterns for security awareness
+ */
+const getMostCommonLocation = (logins) => {
+  const locationCounts = {};
+  logins.forEach((login) => {
+    const locationKey = `${login.location.city}, ${login.location.country}`;
+    locationCounts[locationKey] = (locationCounts[locationKey] || 0) + 1;
+  });
+
+  const mostCommon = Object.entries(locationCounts).sort(
+    (a, b) => b[1] - a[1]
+  )[0];
+  return mostCommon ? mostCommon[0] : "Unknown";
 };

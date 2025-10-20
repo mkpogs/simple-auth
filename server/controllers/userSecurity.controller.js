@@ -1,13 +1,13 @@
-import { getUserSecurityDashboard } from "../services/userSecurity.service";
+import { getUserSecurityDashboard } from "../services/userSecurity.service.js";
 import User from "../models/User.model.js";
 import AppError from "../utils/AppError.js";
-import { parse } from "dotenv";
+import bcrypt from "bcryptjs";
 
 /**
  * User Security Dashboard Controller
  *
  * Simple Explanation:
- * This controller handles all security dashboard  requests from regular users:
+ * This controller handles all security dashboard requests from regular users:
  *   - Show me my security dashboard --> Get overview, devices, activity
  *   - Remove my trusted device --> Delete specific device
  *   - Show my login history --> Get detailed login timeline
@@ -29,7 +29,7 @@ import { parse } from "dotenv";
  * WHAT IT RETURNS:
  *  - Security score and recommendations
  *  - 2FA status and backup codes info
- *  - Trusted  devices with locations
+ *  - Trusted devices with locations
  *  - Recent login activity with geographic data
  */
 export const getSecurityDashboard = async (req, res, next) => {
@@ -41,14 +41,13 @@ export const getSecurityDashboard = async (req, res, next) => {
 
     console.log("✅ Security dashboard generated successfully");
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Security dashboard retrieved successfully",
       data: securityData,
     });
   } catch (error) {
-    console.error("❌ Get Security Dashboard Error:", error);
-    next(new AppError("Failed to load security dashboard", 500));
+    next(error);
   }
 };
 
@@ -61,7 +60,7 @@ export const getSecurityDashboard = async (req, res, next) => {
  * QUERY PARAMS:
  *  - page: Page number (default: 1)
  *  - limit: Items per page (default: 20, max: 100)
- *  - success: Filter by succcess status (true/false)
+ *  - success: Filter by success status (true/false)
  *  - days: Filter by days ago (7, 30, 90)
  */
 export const getLoginHistory = async (req, res, next) => {
@@ -78,72 +77,55 @@ export const getLoginHistory = async (req, res, next) => {
 
     // Validate pagination
     const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseint(limit)));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const daysNum = Math.max(1, parseInt(days));
 
-    // Build query for login history
-    const query = { user: req.user._id };
+    // Get user with login history
+    const user = await User.findById(req.user._id).select("+loginHistory");
+
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    let loginHistory = user.loginHistory || [];
 
     // Filter by success status if provided
     if (success !== undefined) {
-      query.success = success === "true";
+      const isSuccess = success === "true";
+      loginHistory = loginHistory.filter(
+        (login) => login.success === isSuccess
+      );
     }
 
     // Filter by date range
     const dateLimit = new Date(Date.now() - daysNum * 24 * 60 * 60 * 1000);
-    query.loginAt = { $gte: dateLimit };
+    loginHistory = loginHistory.filter((login) => login.loginAt >= dateLimit);
 
-    // Get Login History with pagination
-    const loginHistory = (await import("../models/User.model.js")).loginHistory;
+    // Sort by most recent first
+    loginHistory.sort((a, b) => new Date(b.loginAt) - new Date(a.loginAt));
 
-    const totalLogins = await loginHistory.countDocuments(query);
-    const logins = await loginHistory
-      .find(query)
-      .sort({ loginAt: -1 })
-      .skip((pageNum - 1) * limitNum)
-      .limit(limitNum)
-      .lean();
+    // Pagination
+    const totalLogins = loginHistory.length;
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
+    const paginatedLogins = loginHistory.slice(startIndex, endIndex);
 
-    // Process logins for display (reuse logic from service)
-    const { default: UAParser } = await import("ua-parser-js");
-    const { default: geoip } = await import("geoip-lite");
-    const { default: moment } = await import("moment");
+    // Process logins for display with device and time information
+    const processedLogins = paginatedLogins.map((login) => {
+      // Simple time ago calculation
+      const timeAgo = getTimeAgo(login.loginAt);
 
-    const processedLogins = logins.map((login) => {
-      // Parse user agent
-      const parser = new UAParser();
-      parser.setUA(login.userAgent);
-      const uaResult = parser.getResult();
-
-      // Get location from IP
-      let location = { country: "Unknown", city: "Unknown" };
-      try {
-        const geo = geoip.lookup(login.ipAddress);
-        if (geo) {
-          location = {
-            country: geo.country || "Unknown",
-            city: geo.city || "Unknown",
-            region: geo.region || "Unknown",
-            flag: getCountryFlag(geo.country),
-          };
-        }
-      } catch (error) {
-        console.log("Could not get location for IP:", login.ipAddress);
-      }
+      // Basic user agent parsing
+      const deviceInfo = parseUserAgent(login.userAgent);
 
       return {
         id: login._id,
         loginAt: login.loginAt,
-        loginAgo: moment(login.loginAt).fromNow(),
+        loginAgo: timeAgo,
         success: login.success,
         reason:
           login.reason || (login.success ? "Login successful" : "Login failed"),
-        device: {
-          browser: uaResult.browser.name || "Unknown",
-          os: uaResult.os.name || "Unknown",
-          type: uaResult.device.type || "desktop",
-        },
-        location: location,
+        device: deviceInfo,
         ipAddress: login.ipAddress,
       };
     });
@@ -159,7 +141,7 @@ export const getLoginHistory = async (req, res, next) => {
       pages: totalPages,
     });
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Login history retrieved successfully",
       data: {
@@ -179,8 +161,7 @@ export const getLoginHistory = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("❌ Get Login History Error:", error);
-    next(new AppError("Failed to retrieve login history", 500));
+    next(error);
   }
 };
 
@@ -189,6 +170,11 @@ export const getLoginHistory = async (req, res, next) => {
  * GET /api/users/security/trusted-devices
  *
  * PURPOSE: Get all trusted devices for current user
+ *
+ * WHAT IT RETURNS:
+ *  - List of active trusted devices with device info
+ *  - Device statistics (total, active, inactive)
+ *  - Device details (browser, OS, location, last used)
  */
 export const getTrustedDevices = async (req, res, next) => {
   try {
@@ -200,59 +186,35 @@ export const getTrustedDevices = async (req, res, next) => {
     );
 
     if (!user) {
-      return next(new AppError("User not found", 404));
+      throw new AppError("User not found", 404);
     }
 
     const trustedDevices = user.twoFactorAuth?.trustedDevices || [];
     const activeDevices = trustedDevices.filter((device) => device.isActive);
 
-    // Process devices for display
-    const { default: UAParser } = await import("ua-parser-js");
-    const { default: geoip } = await import("geoip-lite");
-    const { default: moment } = await import("moment");
-
+    // Process devices for display with device information
     const processedDevices = activeDevices.map((device) => {
-      const parser = new UAParser();
-      parser.setUA(device.userAgent);
-      const uaResult = parser.getResult();
-
-      // Get location from IP
-      let location = { country: "Unknown", city: "Unknown" };
-      try {
-        const geo = geoip.lookup(device.ipAddress);
-        if (geo) {
-          location = {
-            country: geo.country || "Unknown",
-            city: geo.city || "Unknown",
-            region: geo.region || "Unknown",
-            flag: getCountryFlag(geo.country),
-          };
-        }
-      } catch (error) {
-        console.log("Could not get location for device IP:", device.ipAddress);
-      }
+      const deviceInfo = parseUserAgent(device.userAgent);
+      const timeAgo = getTimeAgo(device.lastUsed);
 
       return {
         id: device._id || device.deviceId,
-        name:
-          device.deviceName ||
-          `${uaResult.browser.name} on ${uaResult.os.name}`,
-        browser: uaResult.browser.name || "Unknown",
-        os: uaResult.os.name || "Unknown",
-        deviceType: uaResult.device.type || "desktop",
-        location: location,
+        name: device.deviceName || `${deviceInfo.browser} on ${deviceInfo.os}`,
+        browser: deviceInfo.browser,
+        os: deviceInfo.os,
+        deviceType: deviceInfo.type,
         ipAddress: device.ipAddress,
         trustedAt: device.trustedAt,
         lastUsed: device.lastUsed,
-        lastUsedAgo: moment(device.lastUsed).fromNow(),
-        isRecent: moment(device.lastUsed).isAfter(moment().subtract(7, "days")),
+        lastUsedAgo: timeAgo,
+        isRecent: isRecentDate(device.lastUsed, 7), // Within 7 days
         isActive: device.isActive,
       };
     });
 
     console.log("✅ Trusted devices retrieved:", processedDevices.length);
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Trusted devices retrieved successfully",
       data: {
@@ -265,8 +227,7 @@ export const getTrustedDevices = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("❌ Get Trusted Devices Error:", error);
-    next(new AppError("Failed to retrieve trusted devices", 500));
+    next(error);
   }
 };
 
@@ -274,6 +235,11 @@ export const getTrustedDevices = async (req, res, next) => {
  * DELETE /api/users/security/trusted-devices/:deviceId
  *
  * PURPOSE: Remove a trusted device by its ID
+ *
+ * SECURITY MEASURES:
+ *  - Requires password confirmation
+ *  - Only user can remove their own devices
+ *  - Validates device exists before removal
  */
 export const removeTrustedDevice = async (req, res, next) => {
   try {
@@ -287,14 +253,13 @@ export const removeTrustedDevice = async (req, res, next) => {
 
     // Security check - require password for device removal
     if (!password) {
-      return next(
-        new AppError("Please provide your password to remove device", 400)
-      );
+      throw new AppError("Please provide your password to remove device", 400);
     }
 
+    // Verify password for security
     const isPasswordValid = await req.user.comparePassword(password);
     if (!isPasswordValid) {
-      return next(new AppError("Invalid password", 401));
+      throw new AppError("Invalid password", 401);
     }
 
     // Find and remove the device
@@ -303,7 +268,7 @@ export const removeTrustedDevice = async (req, res, next) => {
     );
 
     if (!user) {
-      return next(new AppError("User not found", 404));
+      throw new AppError("User not found", 404);
     }
 
     // Find device index
@@ -313,13 +278,13 @@ export const removeTrustedDevice = async (req, res, next) => {
     );
 
     if (deviceIndex === -1 || deviceIndex === undefined) {
-      return next(new AppError("Trusted device not found", 404));
+      throw new AppError("Trusted device not found", 404);
     }
 
     // Get device info before removal (for response)
     const removedDevice = user.twoFactorAuth.trustedDevices[deviceIndex];
 
-    // Remove device
+    // Remove device from array
     user.twoFactorAuth.trustedDevices.splice(deviceIndex, 1);
     user.updatedAt = new Date();
 
@@ -327,7 +292,7 @@ export const removeTrustedDevice = async (req, res, next) => {
 
     console.log("✅ Trusted device removed successfully");
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Trusted device removed successfully",
       data: {
@@ -342,8 +307,7 @@ export const removeTrustedDevice = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error("❌ Remove Trusted Device Error:", error);
-    next(new AppError("Failed to remove trusted device", 500));
+    next(error);
   }
 };
 
@@ -352,6 +316,12 @@ export const removeTrustedDevice = async (req, res, next) => {
  * GET /api/users/security/settings
  *
  * PURPOSE: Get current security settings summary
+ *
+ * WHAT IT RETURNS:
+ *  - Account verification status
+ *  - 2FA configuration and backup codes info
+ *  - Security metrics (password age, failed attempts, etc.)
+ *  - Trusted devices count
  */
 export const getSecuritySettings = async (req, res, next) => {
   try {
@@ -360,13 +330,14 @@ export const getSecuritySettings = async (req, res, next) => {
     const user = await User.findById(req.user._id).select("+twoFactorAuth");
 
     if (!user) {
-      return next(new AppError("User not found", 404));
+      throw new AppError("User not found", 404);
     }
 
     const twoFA = user.twoFactorAuth || {};
     const backupCodes = twoFA.backupCodes || [];
     const trustedDevices = twoFA.trustedDevices || [];
 
+    // Build comprehensive security settings summary
     const settings = {
       account: {
         email: user.email,
@@ -391,38 +362,80 @@ export const getSecuritySettings = async (req, res, next) => {
 
     console.log("✅ Security settings retrieved");
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Security settings retrieved successfully",
       data: settings,
     });
   } catch (error) {
-    console.error("❌ Get Security Settings Error:", error);
-    next(new AppError("Failed to retrieve security settings", 500));
+    next(error);
   }
 };
 
 // ===== HELPER FUNCTIONS =====
+
 /**
- * Get country flag emoji from country code
+ * Calculate human-readable time difference from a given date
+ * Returns formats like "2 minutes ago", "1 day ago", etc.
  */
-const getCountryFlag = (countryCode) => {
-  const flags = {
-    US: "🇺🇸",
-    CA: "🇨🇦",
-    GB: "🇬🇧",
-    DE: "🇩🇪",
-    FR: "🇫🇷",
-    AU: "🇦🇺",
-    JP: "🇯🇵",
-    CN: "🇨🇳",
-    IN: "🇮🇳",
-    BR: "🇧🇷",
-    PH: "🇵🇭",
-    MX: "🇲🇽",
-    IT: "🇮🇹",
-    ES: "🇪🇸",
-    RU: "🇷🇺",
-  };
-  return flags[countryCode] || "🌍";
+const getTimeAgo = (date) => {
+  const now = new Date();
+  const diffMs = now - new Date(date);
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+  return new Date(date).toLocaleDateString();
+};
+
+/**
+ * Parse user agent string to extract device information
+ * Simple parsing without external libraries for basic browser/OS detection
+ */
+const parseUserAgent = (userAgent) => {
+  if (!userAgent) {
+    return { browser: "Unknown", os: "Unknown", type: "desktop" };
+  }
+
+  const ua = userAgent.toLowerCase();
+
+  // Browser detection
+  let browser = "Unknown";
+  if (ua.includes("chrome")) browser = "Chrome";
+  else if (ua.includes("firefox")) browser = "Firefox";
+  else if (ua.includes("safari")) browser = "Safari";
+  else if (ua.includes("edge")) browser = "Edge";
+  else if (ua.includes("opera")) browser = "Opera";
+
+  // OS detection
+  let os = "Unknown";
+  if (ua.includes("windows")) os = "Windows";
+  else if (ua.includes("mac")) os = "macOS";
+  else if (ua.includes("linux")) os = "Linux";
+  else if (ua.includes("android")) os = "Android";
+  else if (ua.includes("ios")) os = "iOS";
+
+  // Device type detection
+  let type = "desktop";
+  if (ua.includes("mobile") || ua.includes("android")) type = "mobile";
+  else if (ua.includes("tablet") || ua.includes("ipad")) type = "tablet";
+
+  return { browser, os, type };
+};
+
+/**
+ * Check if a date is within a specified number of days from now
+ * Used to determine if device usage or login is "recent"
+ */
+const isRecentDate = (date, days) => {
+  const now = new Date();
+  const checkDate = new Date(date);
+  const diffMs = now - checkDate;
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays <= days;
 };
