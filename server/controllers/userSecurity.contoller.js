@@ -183,3 +183,166 @@ export const getLoginHistory = async (req, res, next) => {
     next(new AppError("Failed to retrieve login history", 500));
   }
 };
+
+// ===== MANAGE TRUSTED DEVICES =====
+/**
+ * GET /api/users/security/trusted-devices
+ *
+ * PURPOSE: Get all trusted devices for current user
+ */
+export const getTrustedDevices = async (req, res, next) => {
+  try {
+    console.log("📱 Trusted devices request from user:", req.user.email);
+
+    // Get user with trusted devices
+    const user = await User.findById(req.user._id).select(
+      "+twoFactorAuth.trustedDevices"
+    );
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    const trustedDevices = user.twoFactorAuth?.trustedDevices || [];
+    const activeDevices = trustedDevices.filter((device) => device.isActive);
+
+    // Process devices for display
+    const { default: UAParser } = await import("ua-parser-js");
+    const { default: geoip } = await import("geoip-lite");
+    const { default: moment } = await import("moment");
+
+    const processedDevices = activeDevices.map((device) => {
+      const parser = new UAParser();
+      parser.setUA(device.userAgent);
+      const uaResult = parser.getResult();
+
+      // Get location from IP
+      let location = { country: "Unknown", city: "Unknown" };
+      try {
+        const geo = geoip.lookup(device.ipAddress);
+        if (geo) {
+          location = {
+            country: geo.country || "Unknown",
+            city: geo.city || "Unknown",
+            region: geo.region || "Unknown",
+            flag: getCountryFlag(geo.country),
+          };
+        }
+      } catch (error) {
+        console.log("Could not get location for device IP:", device.ipAddress);
+      }
+
+      return {
+        id: device._id || device.deviceId,
+        name:
+          device.deviceName ||
+          `${uaResult.browser.name} on ${uaResult.os.name}`,
+        browser: uaResult.browser.name || "Unknown",
+        os: uaResult.os.name || "Unknown",
+        deviceType: uaResult.device.type || "desktop",
+        location: location,
+        ipAddress: device.ipAddress,
+        trustedAt: device.trustedAt,
+        lastUsed: device.lastUsed,
+        lastUsedAgo: moment(device.lastUsed).fromNow(),
+        isRecent: moment(device.lastUsed).isAfter(moment().subtract(7, "days")),
+        isActive: device.isActive,
+      };
+    });
+
+    console.log("✅ Trusted devices retrieved:", processedDevices.length);
+
+    return res.status(200).json({
+      success: true,
+      message: "Trusted devices retrieved successfully",
+      data: {
+        devices: processedDevices,
+        statistics: {
+          total: trustedDevices.length,
+          active: activeDevices.length,
+          inactive: trustedDevices.length - activeDevices.length,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("❌ Get Trusted Devices Error:", error);
+    next(new AppError("Failed to retrieve trusted devices", 500));
+  }
+};
+
+/**
+ * DELETE /api/users/security/trusted-devices/:deviceId
+ *
+ * PURPOSE: Remove a trusted device by its ID
+ */
+export const removeTrustedDevice = async (req, res, next) => {
+  try {
+    const { deviceId } = req.params;
+    const { password } = req.body;
+
+    console.log("🗑️ Remove trusted device request:", {
+      user: req.user.email,
+      deviceId,
+    });
+
+    // Security check - require password for device removal
+    if (!password) {
+      return next(
+        new AppError("Please provide your password to remove device", 400)
+      );
+    }
+
+    const isPasswordValid = await req.user.comparePassword(password);
+    if (!isPasswordValid) {
+      return next(new AppError("Invalid password", 401));
+    }
+
+    // Find and remove the device
+    const user = await User.findById(req.user._id).select(
+      "+twoFactorAuth.trustedDevices"
+    );
+
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+
+    // Find device index
+    const deviceIndex = user.twoFactorAuth?.trustedDevices?.findIndex(
+      (device) =>
+        device._id?.toString() === deviceId || device.deviceId === deviceId
+    );
+
+    if (deviceIndex === -1 || deviceIndex === undefined) {
+      return next(new AppError("Trusted device not found", 404));
+    }
+
+    // Get device info before removal (for response)
+    const removedDevice = user.twoFactorAuth.trustedDevices[deviceIndex];
+
+    // Remove device
+    user.twoFactorAuth.trustedDevices.splice(deviceIndex, 1);
+    user.updatedAt = new Date();
+
+    await user.save();
+
+    console.log("✅ Trusted device removed successfully");
+
+    return res.status(200).json({
+      success: true,
+      message: "Trusted device removed successfully",
+      data: {
+        removedDevice: {
+          id: removedDevice._id || removedDevice.deviceId,
+          name: removedDevice.deviceName,
+          removedAt: new Date(),
+        },
+        remainingDevices: user.twoFactorAuth.trustedDevices.filter(
+          (d) => d.isActive
+        ).length,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Remove Trusted Device Error:", error);
+    next(new AppError("Failed to remove trusted device", 500));
+  }
+};
