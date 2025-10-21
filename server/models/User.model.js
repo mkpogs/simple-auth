@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { type } from "os";
 
 const userSchema = new mongoose.Schema(
   {
@@ -153,15 +152,26 @@ const userSchema = new mongoose.Schema(
     // *** Security and Tracking ***
     loginHistory: [
       {
-        timestamp: { type: Date, default: Date.now },
-        ip: { type: String },
-        userAgent: { type: String },
-        location: {
-          country: { type: String, trim: true },
-          city: { type: String, trim: true },
+        loginAt: {
+          type: Date,
+          default: Date.now,
         },
-        success: { type: Boolean, default: true },
-        failureReason: { type: String },
+        success: {
+          type: Boolean,
+          required: true,
+        },
+        reason: {
+          type: String,
+          default: "Login attempt",
+        },
+        userAgent: {
+          type: String,
+          default: "Unknown",
+        },
+        ipAddress: {
+          type: String,
+          default: "Unknown",
+        },
       },
     ],
     accountLockout: {
@@ -424,26 +434,69 @@ userSchema.methods.createPasswordResetToken = function () {
 };
 
 // *** Record Login Attempt ***
-userSchema.methods.recordLogin = function (
-  req,
-  success = true,
-  failureReason = null
-) {
-  // Add Login Record
-  this.loginHistory.push({
-    ip: req.ip || req.connection.remoteAddress,
-    userAgent: req.get("User-Agent"),
-    success,
-    failureReason,
-    timestamp: new Date(),
-  });
+// Replace your existing recordLogin method with this:
+userSchema.methods.recordLogin = async function (req, success, reason = null) {
+  try {
+    const userAgent =
+      req.get("User-Agent") || req.headers["user-agent"] || "Unknown";
+    const ipAddress = req.ip || req.connection.remoteAddress || "Unknown";
+    const now = new Date();
 
-  // Keep only last 20 login attempts for performance
-  if (this.loginHistory.length > 20) {
-    this.loginHistory = this.loginHistory.slice(-20);
+    console.log(`🔍 Recording login for ${this.email}:`, {
+      success,
+      reason,
+      userAgent: userAgent.substring(0, 50),
+    });
+
+    // Initialize loginHistory array if it doesn't exist
+    if (!this.loginHistory) {
+      this.loginHistory = [];
+    }
+
+    // PREVENT DUPLICATES: Check if we already recorded a login in the last 5 seconds
+    const lastLogin = this.loginHistory[0];
+    if (lastLogin && now - new Date(lastLogin.loginAt) < 5000) {
+      console.log(
+        `🚫 Duplicate prevented - last login was ${
+          now - new Date(lastLogin.loginAt)
+        }ms ago`
+      );
+      return;
+    }
+
+    // Create login record
+    const loginRecord = {
+      loginAt: now,
+      success,
+      reason: reason || (success ? "Login successful" : "Login failed"),
+      userAgent,
+      ipAddress,
+    };
+
+    // Add to beginning of array (most recent first)
+    this.loginHistory.unshift(loginRecord);
+
+    // Keep only the last 50 login attempts
+    if (this.loginHistory.length > 50) {
+      this.loginHistory = this.loginHistory.slice(0, 50);
+    }
+
+    // Update last login time if successful
+    if (success) {
+      this.lastLoginAt = now;
+    }
+
+    console.log(
+      `✅ Login recorded: ${success ? "SUCCESS" : "FAILED"} for ${
+        this.email
+      }. Total history: ${this.loginHistory.length}`
+    );
+
+    // Save immediately to prevent race conditions
+    await this.save();
+  } catch (error) {
+    console.error("Error recording login attempt:", error);
   }
-
-  return this;
 };
 
 // *** Handle Failed Login Attempt ***

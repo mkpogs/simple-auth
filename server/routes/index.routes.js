@@ -3,8 +3,6 @@ import authRoutes from "./auth.routes.js";
 import userRoutes from "./user.routes.js";
 import adminRoutes from "./admin.routes.js";
 import twoFactorRoutes from "./twoFactor.routes.js";
-import userSecurity from "./userSecurity.routes.js";
-import { get } from "mongoose";
 
 const router = express.Router();
 
@@ -27,7 +25,6 @@ router.get("/health", (req, res) => {
  *  - /api/users/*          ->  User profile routes (protected)
  *  - /api/admin/*          ->  Admin management routes (admin/moderator only)
  *  - /api/2fa/*            ->  Two-Factor Authentication routes (protected)
- *  - /api/users/security/* ->  User security dashboard routes (protected)
  */
 
 // Route Mounting
@@ -35,7 +32,6 @@ router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/admin", adminRoutes);
 router.use("/2fa", twoFactorRoutes);
-router.use("/users/security", userSecurity);
 
 // API info route
 router.get("/", (req, res) => {
@@ -71,14 +67,6 @@ router.get("/", (req, res) => {
         disable2FA: "DELETE /api/2fa/disable",
         regenerateBackupCodes: "POST /api/2fa/backup-codes/regenerate",
         verify2FALogin: "POST /api/2fa/verify-login",
-      },
-      userSecurity: {
-        getSecurityDashboard: "GET /api/users/security/dashboard",
-        getSecuritySettings: "GET /api/users/security/settings",
-        getLoginHistory: "GET /api/users/security/login-history",
-        getTrustedDevices: "GET /api/users/security/trusted-devices",
-        removeTrustedDevice:
-          "DELETE /api/users/security/trusted-devices/:deviceId",
       },
     },
   });
