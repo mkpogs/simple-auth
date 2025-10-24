@@ -52,3 +52,78 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+// *** Response Interceptor - Runs AFTER every API response ***
+api.interceptors.response.use(
+  (response) => {
+    // Log successful responses in development
+    if (NODE_ENV === "development") {
+      console.log(
+        `✅ API Success: ${response.config.method?.toUpperCase()} ${
+          response.config.url
+        }`
+      );
+    }
+    return response;
+  },
+  (error) => {
+    // Handle different types of errors
+    const status = error.response?.status;
+    const message = error.response?.data?.message || "Something went wrong.";
+
+    switch (status) {
+      case 401:
+        // Unauthorized - Token expired or invalid
+        console.log("🔐 Unauthorized - clearing tokens");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("user");
+
+        // Don't show toast on login page (expected behavior)
+        if (!window.location.pathname.includes("/login")) {
+          toast.error("Session expired. Please log in again.");
+          window.location.href = "/login";
+        }
+        break;
+
+      case 403:
+        // Forbidden - user does not have permission
+        toast.error(
+          `Access denied. You don't have permission to perform this action.`
+        );
+        break;
+
+      case 404:
+        // Not Found
+        toast.error("Resource not found.");
+        break;
+
+      case 422:
+        // Validation error - don't show toast (handled by forms)
+        console.log("⚠️ Validation error:", error.response?.data);
+        break;
+
+      case 429:
+        // Rate Limiting
+        toast.error("Too many requests. Please try again later.");
+        break;
+
+      case 500:
+      case 502:
+      case 503:
+        // Server errors
+        toast.error("Server error. Please try again later.");
+        break;
+
+      default:
+        // Other errors
+        if (status >= 400) {
+          toast.error(message);
+        }
+    }
+    console.error("❌ API Error:", error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+
+export default api;
