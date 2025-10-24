@@ -71,4 +71,13 @@ export const authService = {
     const response = await api.post("/auth/reset-password", resetData);
     return response.data;
   },
+
+  // ===== TOKEN MANAGEMENT =====
+  /**
+   * POST /api/auth/refresh-token
+   */
+  refreshToken: async (refreshToken) => {
+    const response = await api.post("/auth/refresh-token", { refreshToken });
+    return response.data;
+  },
 };
