@@ -1,4 +1,3 @@
-import { resendOTP } from "../../../server/controllers/auth.controller";
 import api from "../utils/api";
 
 /**
