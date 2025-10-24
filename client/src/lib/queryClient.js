@@ -1,6 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { refreshToken } from "../../../server/controllers/auth.controller";
 
 /**
  * TanStack Query Client Configuration
