@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { refreshToken } from "../../../server/controllers/auth.controller";
 
 /**
  * TanStack Query Client Configuration
@@ -59,3 +60,56 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * Query Key Factor
+ *
+ * WHAT IT DOES:
+ *  - Creates consistent cache  keys for API calls
+ *  - Helps with cache invalidation
+ *  - Makes  debugging easier
+ *
+ * WHY WE NEED IT:
+ *  - Prevents cache key typos
+ *  - Easy to invalidate related queries
+ *  - Better organization
+ *
+ * BASED ON API ENDPOINTS IN SERVER
+ *  - /api/auth/*   (auth.routes.js)
+ *  - /api/users/*  (user.routes.js)
+ *  - /api/admin/*  (admin.routes.js)
+ *  - /api/2fa/*    (twoFactor.routes.js)
+ */
+export const queryKeys = {
+  // ===== AUTH QUERIES (/api/auth/*) =====
+  auth: {
+    // NOTE: No /auth/me - use /users/profile instead
+    login: ["auth", "login"],
+    register: ["auth", "register"],
+    verify: (email) => ["auth", "verify-otp", email],
+    refreshToken: ["auth", "refresh-token"],
+  },
+
+  // ===== USER QUERIES (/api/users/*) =====
+  user: {
+    profile: ["users", "profile"],
+    avatar: ["user", "avatar"],
+  },
+
+  // ===== TWO-FACTOR QUERIES (/api/2fa/*) =====
+  twoFactor: {
+    status: ["2fa", "status"],
+    enable: ["2fa", "enable"],
+    verify: ["2fa", "verify"],
+    disable: ["2fa", "disable"],
+    backupCodes: ["2fa", "backup-codes"],
+    verifyLogin: ["2fa", "verify-login"],
+  },
+
+  // ===== ADMIN QUERIES (/api/admin/*) =====
+  admin: {
+    stats: ["admin", "stats"],
+    users: (filters) => ["admin", "users", filters],
+    user: (id) => ["admin", "users", id],
+  },
+};
