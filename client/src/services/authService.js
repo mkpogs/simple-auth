@@ -1,3 +1,4 @@
+import { resendOTP } from "../../../server/controllers/auth.controller";
 import api from "../utils/api";
 
 /**
@@ -13,6 +14,7 @@ import api from "../utils/api";
  *  - Token Refresh
  */
 export const authService = {
+  // ===== AUTHENTICATION =====
   /**
    * POST /api/auth/register
    */
@@ -34,6 +36,23 @@ export const authService = {
    */
   logout: async (refreshToken) => {
     const response = await api.post("/auth/logout", { refreshToken });
+    return response.data;
+  },
+
+  // ===== EMAIL VERIFICATION =====
+  /**
+   * POST /api/auth/verify-otp
+   */
+  verifyOTP: async (verificationData) => {
+    const response = await api.post("/auth/verify-otp", verificationData);
+    return response.data;
+  },
+
+  /**
+   * POST /api/auth/resend-otp
+   */
+  resendOTP: async (email) => {
+    const response = await api.post("/auth/resend-otp", { email });
     return response.data;
   },
 };
