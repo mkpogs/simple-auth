@@ -54,4 +54,21 @@ export const authService = {
     const response = await api.post("/auth/resend-otp", { email });
     return response.data;
   },
+
+  // ===== PASSWORD RESET =====
+  /**
+   * POST /api/auth/forgot-password
+   */
+  forgotPassword: async (email) => {
+    const response = await api.post("/auth/forgot-password", { email });
+    return response.data;
+  },
+
+  /**
+   * POST /api/auth/reset-password
+   */
+  resetPassword: async (resetData) => {
+    const response = await api.post("/auth/reset-password", resetData);
+    return response.data;
+  },
 };
