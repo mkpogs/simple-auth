@@ -60,4 +60,24 @@ export const userService = {
     const response = await api.delete("/users/avatar");
     return response.data;
   },
+
+  // ===== SECURITY =====
+
+  /**
+   * PUT /api/users/change-password
+   */
+  changePassword: async (passwordData) => {
+    const response = await api.put("/users/change-password", passwordData);
+    return response.data;
+  },
+
+  /**
+   * DELETE /api/users/account
+   */
+  deleteAccount: async (password) => {
+    const response = await api.delete("/users/account", {
+      data: { password },
+    });
+    return response.data;
+  },
 };
