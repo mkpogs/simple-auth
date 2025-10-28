@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { set } from "mongoose";
 
 /**
  * Authentication Slice - User Login/Logout State Manager
@@ -118,4 +119,67 @@ const initialState = {
  *  2. Redux Toolkit automatically creates action creators
  *  3. Immer lets you "mutate" state safely (actually creates new state)
  */
-const authSlice = createSlice({});
+const authSlice = createSlice({
+  // Slice name - used as prefix for action types
+  name: "auth", // Actions will be: "auth/loginStart", "auth/loginSuccess", etc.
+
+  // Initial state defined above - Starting point for auth state
+  initialState,
+
+  // 🔄 REDUCERS - How state changes when actions happen
+  reducers: {
+    // ===== LOGIN FLOW ACTIONS =====
+
+    /**
+     * loginStart - User clicked "Login" button
+     *
+     * WHEN: User submits login form
+     * PURPOSE: Set loading state, clear errors
+     * STATE CHANGES: isLoading = true, error = null
+     */
+    loginStart: (state) => {
+      console.log("Login started");
+
+      // Immer magic: This looks like a mutation but creates new  state
+      state.isLoading = true;
+      state.error = null;
+      state.requiresTwoFactor = false;
+      state.tempUserId = null;
+      state.tempEmail = null;
+    },
+
+    /**
+     * loginSuccess - Login completed successfully (no 2FA)
+     *
+     * WHEN: API returns user data and tokens
+     * PURPOSE: Save user data, mark as authenticated
+     * STATE CHANGES: Save user, tokens, set isAuthenticated = true
+     */
+    loginSuccess: (state, action) => {
+      console.log("✅ Login successful:", action.payload);
+
+      // Extract data from action payload
+      const { user, tokens } = action.payload;
+
+      // Update state
+      state.isLoading = false;
+      state.isAuthenticated = true;
+      state.user = user;
+      state.accessToken = tokens.accessToken;
+      state.refreshToken = tokens.refreshToken;
+      state.requiresTwoFactor = false;
+      state.tempUserId = null;
+      state.tempEmail = null;
+      state.error = null;
+      state.loginTimestamp = Date.now();
+      state.lastActivity = Date.now();
+
+      // Persist to localStorage
+      setStoredAuth({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        user,
+      });
+    },
+  },
+});
