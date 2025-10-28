@@ -232,5 +232,23 @@ const authSlice = createSlice({
         user: user,
       });
     },
+
+    /**
+     * loginFailure - Login or 2FA verification failed
+     *
+     * WHEN: Wrong credentials or 2FA code, etc.
+     * PURPOSE: Show error message, reset states
+     * STATE CHANGES: Set error, clear loading states
+     */
+    loginFailure: (state, action) => {
+      console.log("❌ Login failed:", action.payload);
+
+      state.isLoading = false;
+      state.error = action.payload;
+      state.lastError = action.payload;
+      state.requiresTwoFactor = false;
+      state.tempUserId = null;
+      state.tempEmail = null;
+    },
   },
 });
