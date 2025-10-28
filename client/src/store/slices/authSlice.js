@@ -55,3 +55,28 @@ const clearStoredAuth = () => {
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("user");
 };
+
+// 🏁 Get initial state from localStorage (survives page refresh)
+const initialAuthState = getStoredAuth();
+
+const initialState = {
+  // ===== AUTHENTICATION STATUS =====
+  isAuthenticated: !!initialAuthState.accessToken,
+  user: initialAuthState.user,
+  accessToken: initialAuthState.accessToken,
+  refreshToken: initialAuthState.refreshToken,
+
+  // ===== AUTHENTICATION FLOW STATES =====
+  isLoading: false,
+  requiresTwoFactor: false,
+  tempUserId: null, // Temporary ID during 2FA verification
+  tempEmail: null, // Email for 2FA verification
+
+  // ===== ERROR HANDLING =====
+  error: null,
+  lastError: null,
+
+  // ===== SESSION INFO =====
+  loginTimestamp: initialAuthState.user ? Date.now() : null,
+  lastActivity: initialAuthState.user ? Date.now() : null,
+};
