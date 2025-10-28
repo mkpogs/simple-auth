@@ -39,3 +39,19 @@ const getStoredAuth = () => {
     };
   }
 };
+
+const setStoredAuth = ({ accessToken, refreshToken, user }) => {
+  try {
+    if (accessToken) localStorage.setItem("accessToken", accessToken);
+    if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+    if (user) localStorage.setItem("user", JSON.stringify(user));
+  } catch (error) {
+    console.error("Error storing auth:", error);
+  }
+};
+
+const clearStoredAuth = () => {
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+};
