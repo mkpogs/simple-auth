@@ -22,4 +22,24 @@ export const adminService = {
     const response = await api.get("/admin/stats");
     return response.data;
   },
+
+  // ===== USER MANAGEMENT =====
+
+  /**
+   * GET /api/admin/users
+   * Get all users with filtering
+   */
+  getUsers: async (params = {}) => {
+    const response = await api.get("/admin/users", { params });
+    return response.data;
+  },
+
+  /**
+   * GET /api/admin/users/:id
+   * Get specific user details by ID
+   */
+  getUser: async (userId) => {
+    const response = await api.get(`/admin/users/${userId}`);
+    return response.data;
+  },
 };
