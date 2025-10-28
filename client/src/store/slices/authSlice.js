@@ -181,5 +181,56 @@ const authSlice = createSlice({
         user,
       });
     },
+
+    /**
+     * loginRequires2FA - Login needs 2FA verification
+     *
+     * WHEN: API says "login valid, but needs 2FA code"
+     * PURPOSE: SHOW 2FA form, store temp data
+     * STATE CHANGES: requiresTwoFactor = true, store temp data
+     */
+    loginRequires2FA: (state, action) => {
+      console.log("🔐 2FA required:", action.payload);
+
+      const { tempUserId, email } = action.payload;
+
+      state.isLoading = false;
+      state.requiresTwoFactor = true;
+      state.tempUserId = tempUserId;
+      state.tempEmail = email;
+      state.error = null;
+    },
+
+    /**
+     * twoFactorSuccess - 2FA verification successful
+     *
+     * WHEN: User enters correct 2FA code
+     * PURPOSE: Complete login process
+     * STATE CHANGES: Same as loginSuccess
+     */
+    twoFactorSuccess: (state, action) => {
+      console.log("✅ 2FA verification successful:", action.payload);
+
+      const { user, tokens } = action.payload;
+
+      state.isLoading = false;
+      state.isAuthenticated = true;
+      state.user = user;
+      state.accessToken = tokens.accessToken;
+      state.refreshToken = tokens.refreshToken;
+      state.requiresTwoFactor = false;
+      state.tempUserId = null;
+      state.tempEmail = null;
+      state.error = null;
+      state.loginTimestamp = Date.now();
+      state.lastActivity = Date.now();
+
+      // 💾 Persist to localStorage
+      setStoredAuth({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        user: user,
+      });
+    },
   },
 });
