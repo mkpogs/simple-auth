@@ -63,4 +63,17 @@ export const twoFactorService = {
     const response = await api.post("/2fa/verify-login", verificationData);
     return response.data;
   },
+
+  // ===== BACKUP CODES =====
+
+  /**
+   * POST /api/2fa/backup-codes/regenerate
+   * Generate new backup codes
+   */
+  regenerateBackupCodes: async (password) => {
+    const response = await api.post("/2fa/backup-codes/regenerate", {
+      password,
+    });
+    return response.data;
+  },
 };
