@@ -42,4 +42,31 @@ export const adminService = {
     const response = await api.get(`/admin/users/${userId}`);
     return response.data;
   },
+
+  /**
+   * PUT /api/admin/users/:id/role
+   * Update user role (e.g., user, moderator, admin)
+   */
+  updateUserRole: async (userId, role) => {
+    const response = await api.put(`/admin/users/${userId}/role`, { role });
+    return response.data;
+  },
+
+  /**
+   * PUT /api/admin/users/:id/status
+   * Update user account status (e.g., active, suspended, banned, pending)
+   */
+  updateUserStatus: async (userId, status) => {
+    const response = await api.put(`/admin/users/${userId}/status`, { status });
+    return response.data;
+  },
+
+  /**
+   * DELETE /api/admin/users/:id
+   * Delete user account (admin only)
+   */
+  deleteUser: async (userId) => {
+    const response = await api.delete(`/admin/users/${userId}`);
+    return response.data;
+  },
 };
