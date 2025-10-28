@@ -1,5 +1,4 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { set } from "mongoose";
 
 /**
  * Authentication Slice - User Login/Logout State Manager
@@ -249,6 +248,34 @@ const authSlice = createSlice({
       state.requiresTwoFactor = false;
       state.tempUserId = null;
       state.tempEmail = null;
+    },
+
+    // ===== LOGOUT ACTIONS =====
+    /**
+     * logout - User clicked "Logout" button or session expired
+     *
+     * WHEN: User clicks logout, token expires, etc.
+     * PURPOSE: Clear all user data, reset to initial state
+     * STATE CHANGES: Reset everything to logged-out state
+     */
+    logout: (state) => {
+      console.log("👋 User logged out");
+
+      // 🔄 Reset all authentication data
+      state.isAuthenticated = false;
+      state.user = null;
+      state.accessToken = null;
+      state.refreshToken = null;
+      state.requiresTwoFactor = false;
+      state.tempUserId = null;
+      state.tempEmail = null;
+      state.error = null;
+      state.isLoading = false;
+      state.loginTimestamp = null;
+      state.lastActivity = null;
+
+      // 🗑️ Clear localStorage
+      clearStoredAuth();
     },
   },
 });
