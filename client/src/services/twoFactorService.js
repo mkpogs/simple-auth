@@ -52,4 +52,15 @@ export const twoFactorService = {
     });
     return response.data;
   },
+
+  // ===== LOGIN VERIFICATION =====
+
+  /**
+   * POST /api/2fa/verify-login
+   * Verify 2FA token during login
+   */
+  verifyLogin: async (verificationData) => {
+    const response = await api.post("/2fa/verify-login", verificationData);
+    return response.data;
+  },
 };
