@@ -21,4 +21,35 @@ export const twoFactorService = {
     const response = await api.get("/2fa/status");
     return response.data;
   },
+
+  // ===== 2FA SETUP =====
+
+  /**
+   * POST /api/2fa/enable
+   * Returns QR code and secret for setup
+   */
+  enable: async () => {
+    const response = await api.post("/2fa/enable");
+    return response.data;
+  },
+
+  /**
+   * POST /api/2fa/verify
+   * Verify 2FA setup with TOTP token
+   */
+  verifySetup: async (token) => {
+    const response = await api.post("/2fa/verify", { token });
+    return response.data;
+  },
+
+  /**
+   * DELETE /api/2fa/disable
+   * Disable 2FA for user
+   */
+  disable: async (password, confirmationCode) => {
+    const response = await api.delete("/2fa/disable", {
+      data: { password, confirmationCode },
+    });
+    return response.data;
+  },
 };
