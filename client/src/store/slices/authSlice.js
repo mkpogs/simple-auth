@@ -277,5 +277,30 @@ const authSlice = createSlice({
       // 🗑️ Clear localStorage
       clearStoredAuth();
     },
+
+    // ===== USER PROFILE ACTIONS =====
+    /**
+     * updateUserProfile - User updated their profile
+     *
+     * WHEN: User changes name, avatar, settings, etc.
+     * PURPOSE: Keep user data current
+     * STATE CHANGES: Merge new data with existing user data
+     */
+    updateUserProfile: (state, action) => {
+      console.log("👤 Updating user profile:", action.payload);
+
+      if (state.user) {
+        // Merge new data with existing user data
+        state.user = { ...state.user, ...action.payload };
+        state.lastActivity = Date.now();
+
+        // Update localStorage
+        setStoredAuth({
+          accessToken: state.accessToken,
+          refreshToken: state.refreshToken,
+          user: state.user,
+        });
+      }
+    },
   },
 });
