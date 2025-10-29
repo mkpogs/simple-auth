@@ -229,3 +229,57 @@ export const getAuthError = () => store.getState().auth.error;
 
 // Get loading state
 export const getAuthLoadingState = () => store.getState().auth.isLoading;
+
+// ===== DEVELOPMENT HELPERS =====
+/**
+ * 🛠️ Development-only features (Pure JavaScript)
+ */
+if (import.meta.env.VITE_NODE_ENV === "development") {
+  // Make store accessible in browser console for debugging
+  window.__REDUX_STORE__ = store;
+
+  // Add helpful debugging functions to console
+  window.__DEBUG__ = {
+    // State getters
+    getState: getCurrentState,
+    getAuthState: getCurrentAuthState,
+    getUser: getCurrentUser,
+    getUserRole: getCurrentUserRole,
+    getError: getAuthError,
+    isAuthenticated: isUserAuthenticated,
+    isLoading: getAuthLoadingState,
+
+    // Permission helpers
+    hasRole: hasRole,
+    isAdmin: () => hasRole("admin"),
+    isModerator: () => hasRole("moderator"),
+    isUser: () => hasRole("user"),
+
+    // Actions (for testing)
+    dispatch: store.dispatch,
+
+    // Utilities
+    clearLocalStorage: () => {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      console.log("🗑️ Cleared auth localStorage");
+    },
+  };
+
+  // Log when store is created
+  console.log("🏪 Redux Store initialized!");
+  console.log("📊 Available slices:", Object.keys(store.getState()));
+  console.log("🛠️ Debug helpers available: window.__DEBUG__");
+
+  // Show available debug commands
+  console.log(`
+🔍 Debug Commands Available:
+- window.__DEBUG__.getState()       → Get entire state
+- window.__DEBUG__.getAuthState()   → Get auth state only
+- window.__DEBUG__.getUser()        → Get current user
+- window.__DEBUG__.isAuthenticated() → Check if logged in
+- window.__DEBUG__.hasRole('admin') → Check user role
+- window.__DEBUG__.clearLocalStorage() → Clear auth data
+  `);
+}
