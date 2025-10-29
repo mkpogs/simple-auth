@@ -104,4 +104,89 @@ export const store = configureStore({
         },
       },
     }),
+
+  // ===== DEVTOOLS CONFIGURATION =====
+  /**
+   * 🛠️ Redux DevTools - Browser extension for debugging
+   *
+   * * FEATURES:
+   * - Time-travel debugging (replay actions)
+   * - State inspection (see current state)
+   * - Action history (see what happened when)
+   * - State diff (see what changed)
+   *
+   * ONLY ENABLED IN DEVELOPMENT for security
+   */
+  devTools: import.meta.env.VITE_NODE_ENV !== "production" && {
+    // DevTools configuration
+    name: "SimpleAuth App", // Name shown in DevTools
+
+    // Customize what shows up in DevTools
+    trace: true, // Show stack traces for actions
+    traceLimit: 25, // Limit stack trace depth
+
+    // ===== ACTION SANITIZER =====
+    // Hide sensitive data from DevTools
+    actionSanitizer: (action) => {
+      // Hide tokens from login actions
+      if (
+        action.type === "auth/loginSuccess" ||
+        action.type === "auth/twoFactorSuccess"
+      ) {
+        return {
+          ...action,
+          payload: {
+            ...action.payload,
+            tokens: {
+              accessToken: "[HIDDEN_TOKEN]",
+              refreshToken: "[HIDDEN_TOKEN]",
+            },
+          },
+        };
+      }
+
+      // Hide password from other auth actions
+      if (action.type.startsWith("auth/") && action.payload?.password) {
+        return {
+          ...action,
+          payload: {
+            ...action.payload,
+            password: "[HIDDEN_PASSWORD]",
+          },
+        };
+      }
+
+      return action;
+    },
+
+    // ===== STATE SANITIZER =====
+    // Hide sensitive data in state inspector
+    stateSanitizer: (state) => ({
+      ...state,
+      auth: {
+        ...state.auth,
+        accessToken: state.auth.accessToken ? "[HIDDEN_TOKEN]" : null,
+        refreshToken: state.auth.refreshToken ? "[HIDDEN_TOKEN]" : null,
+      },
+    }),
+
+    // Performance optimization
+    maxAge: 50, // Keep only last 50 actions in DevTools
+  },
+
+  // ===== ENHANCERS =====
+  /**
+   * 🔧 Enhancers - Add extra functionality to the store
+   *
+   * Could include:
+   * - Redux Persist (save state to localStorage)
+   * - Custom logging
+   * - Performance monitoring
+   * - Analytics tracking
+   */
+  enhancers: (getDefaultEnhancers) =>
+    getDefaultEnhancers({
+      // Enhancer configuration
+      autoBatch: true, // Batch multiple state updates for performance
+    }),
 });
