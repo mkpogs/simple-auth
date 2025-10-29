@@ -283,3 +283,37 @@ if (import.meta.env.VITE_NODE_ENV === "development") {
 - window.__DEBUG__.clearLocalStorage() → Clear auth data
   `);
 }
+
+// ===== STORE SUBSCRIPTION FOR DEBUGGING =====
+/**
+ * 🔍 Subscribe to state changes for debugging (development only)
+ */
+if (import.meta.env.VITE_NODE_ENV === "development") {
+  let previousState = store.getState();
+
+  store.subscribe(() => {
+    const currentState = store.getState();
+
+    // Log auth state changes
+    if (previousState.auth !== currentState.auth) {
+      console.log("🔄 Auth state changed:", {
+        from: {
+          isAuthenticated: previousState.auth.isAuthenticated,
+          user: previousState.auth.user?.name || null,
+          isLoading: previousState.auth.isLoading,
+          error: previousState.auth.error,
+          requiresTwoFactor: previousState.auth.requiresTwoFactor,
+        },
+        to: {
+          isAuthenticated: currentState.auth.isAuthenticated,
+          user: currentState.auth.user?.name || null,
+          isLoading: currentState.auth.isLoading,
+          error: currentState.auth.error,
+          requiresTwoFactor: currentState.auth.requiresTwoFactor,
+        },
+      });
+    }
+
+    previousState = currentState;
+  });
+}
