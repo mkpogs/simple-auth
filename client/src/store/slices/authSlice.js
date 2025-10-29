@@ -327,5 +327,33 @@ const authSlice = createSlice({
         user: state.user,
       });
     },
+
+    // ===== ERROR MANAGEMENT =====
+
+    /**
+     * clearError - Clear current error messages
+     *
+     * WHEN: User dismisses error, starts new action
+     * PURPOSE: Clean up UI
+     * STATE CHANGES: error = null
+     */
+    clearError: (state) => {
+      console.log("🧹 Clearing error");
+      state.error = null;
+    },
+
+    /**
+     * setError - Set Error Message
+     *
+     * WHEN: Something goes wrong
+     * PURPOSE: Show error
+     * STATE CHANGES: Set error message
+     */
+    setError: (state, action) => {
+      console.log("❌ Setting error:", action.payload);
+      state.error = action.payload;
+      state.lastError = action.payload;
+      state.isLoading = false;
+    },
   },
 });
