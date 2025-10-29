@@ -106,6 +106,7 @@ const initialState = {
 };
 
 /**
+ * Step 2:
  * 🎯 createSlice - definition of the Slice (The Main Event)
  *
  * WHAT IT CREATES:
@@ -381,3 +382,27 @@ const authSlice = createSlice({
     },
   },
 });
+
+/**
+ * Step 3:
+ * 🎯 EXPORTS ACTIONS - These are automatically created by "createSlice"
+ *
+ * HOW TO USE:
+ *  - import { loginStart, loginSuccess, logout } from './authSlice';
+ *  - dispatch(loginStart());
+ *  - dispatch(loginSuccess({ user, tokens }));
+ */
+export const {
+  loginStart,
+  loginSuccess,
+  loginRequires2FA,
+  twoFactorSuccess,
+  loginFailure,
+  logout,
+  updateUserProfile,
+  updateTokens,
+  clearError,
+  setError,
+  updateActivity,
+  setLoading,
+} = authSlice.actions;
