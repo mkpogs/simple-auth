@@ -302,5 +302,30 @@ const authSlice = createSlice({
         });
       }
     },
+
+    // ===== TOKEN MANAGEMENT =====
+    /**
+     * updateTokens - Got new access/refresh tokens
+     *
+     * WHEN: Token refresh, login, etc.
+     * PURPOSE: Keep tokens current
+     * STATE CHANGES: Update token values
+     */
+    updateTokens: (state, action) => {
+      console.log("🔄 Updating tokens");
+
+      const { accessToken, refreshToken } = action.payload;
+
+      state.accessToken = accessToken;
+      if (refreshToken) state.refreshToken = refreshToken;
+      state.lastActivity = Date.now();
+
+      // Update localStorage
+      setStoredAuth({
+        accessToken,
+        refreshToken: refreshToken || state.refreshToken,
+        user: state.user,
+      });
+    },
   },
 });
