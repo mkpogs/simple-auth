@@ -93,5 +93,15 @@ export const store = configureStore({
           "cache", // Cache might contain large data
         ],
       },
+
+      // *** THUNK CONFIGURATION ***
+      thunk: {
+        // Extra argument for thunk actions (useful for API services)
+        extraArgument: {
+          // You can pass services here if needed later
+          // authService: authService,
+          // userService: userService,
+        },
+      },
     }),
 });
