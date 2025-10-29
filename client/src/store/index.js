@@ -190,3 +190,42 @@ export const store = configureStore({
       autoBatch: true, // Batch multiple state updates for performance
     }),
 });
+
+// ===== HELPER FUNCTIONS =====
+/**
+ * 🔍 Debugging Helpers - Useful during development
+ */
+
+// Get current state (useful for debugging in console)
+export const getCurrentState = () => store.getState();
+
+// Get specific auth state (useful for debugging)
+export const getCurrentAuthState = () => store.getState().auth;
+
+// Check if user is authenticated (useful for debugging)
+export const isUserAuthenticated = () => store.getState().auth.isAuthenticated;
+
+// Get current user (useful for debugging)
+export const getCurrentUser = () => store.getState().auth.user;
+
+// Get user role (useful for permission checks)
+export const getCurrentUserRole = () =>
+  store.getState().auth.user?.role || null;
+
+// Check if user has specific role
+export const hasRole = (role) => {
+  const userRole = getCurrentUserRole();
+  if (!userRole) return false;
+
+  // Admin has access to everything
+  if (userRole === "admin") return true;
+
+  // Check specific role
+  return userRole === role;
+};
+
+// Get auth error
+export const getAuthError = () => store.getState().auth.error;
+
+// Get loading state
+export const getAuthLoadingState = () => store.getState().auth.isLoading;
