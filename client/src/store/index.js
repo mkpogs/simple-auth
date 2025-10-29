@@ -1,6 +1,5 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import authSlice from "./slices/authSlice";
-import { get } from "mongoose";
 
 /**
  * Step 1:
@@ -62,18 +61,16 @@ export const store = configureStore({
    *  - Immutable Check: Warn about state mutations
    *  - Action Type Check: Warn about invalid actions
    */
-  middleware: (getDefaultMiddleware) => {
-    getDefaultMiddleware(
-      {
-        // *** SERIALIZABLE CHECK ***
-        serializableCheck: {
-          // Ignore these action types (they might contain non-serializable data)
-          ignoredActions: [
-            "persist/PERSIST", // Redux Persist action
-            "persist/REHYDRATE", // Redux Persist action
-            "auth/updateActivity", // Contains Timestamp (Date objects)
-          ],
-        },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      // *** SERIALIZABLE CHECK ***
+      serializableCheck: {
+        // Ignore these action types (they might contain non-serializable data)
+        ignoredActions: [
+          "persist/PERSIST", // Redux Persist action
+          "persist/REHYDRATE", // Redux Persist action
+          "auth/updateActivity", // Contains Timestamp (Date objects)
+        ],
 
         // Ignore these state paths (they might contain non-serializable data)
         ignoredPaths: [
@@ -82,13 +79,19 @@ export const store = configureStore({
         ],
 
         // Ignore these action payload paths
-        ignoredActionsPaths: [
+        ignoredActionPaths: [
           "payload.timestamp", // Date objects in payloads
           "meta.timestamp", // Date objects in meta
         ],
-      }
+      },
 
       // *** IMMUTABLE CHECK ***
-    );
-  },
+      immutableCheck: {
+        // Skip these paths for performance (large objects)
+        ignoredPaths: [
+          "auth.user.avatar", // Base64 images can be large
+          "cache", // Cache might contain large data
+        ],
+      },
+    }),
 });
