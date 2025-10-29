@@ -317,3 +317,14 @@ if (import.meta.env.VITE_NODE_ENV === "development") {
     previousState = currentState;
   });
 }
+
+// ========== EXPORT STORE AS DEFAULT ==========
+/**
+ * 🎯 Default Export - The configured store
+ *
+ * THIS IS WHAT GETS USED IN:
+ * - main.jsx: <Provider store={store}>
+ * - Components: useSelector, useDispatch
+ * - Middleware: getState, dispatch
+ */
+export default store;
