@@ -408,7 +408,7 @@ export const {
 } = authSlice.actions;
 
 /**
- * Selector Functions (Optional) - Helper functions to get data from the state
+ * Selector Functions (Optional) - Helper functions to get data from the state (Reusable for components)
  *
  * WHY SELECTORS:
  *  - Avoid repeating state.auth.user everywhere
@@ -463,3 +463,15 @@ export const selectHasRole = (role) => (state) => {
   // Check specific role
   return userRole === role;
 };
+
+/**
+ * Step 4:
+ * 🎯 EXPORT REDUCER - The main reducer function for this slice (will be used in the store)
+ *
+ * THIS GOES INTO THE STORE:
+ * configureStore({
+ *   reducer: {
+ *    auth: authSlice, // this is the default export
+ * })
+ */
+export default authSlice.reducer;
