@@ -423,3 +423,10 @@ export const {
 
 // Get entire auth state
 export const selectAuth = (state) => state.auth;
+
+// Get specific auth values
+export const selectUser = (state) => state.auth.user;
+export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
+export const selectIsLoading = (state) => state.auth.isLoading;
+export const selectRequires2FA = (state) => state.auth.requiresTwoFactor;
+export const selectAuthError = (state) => state.auth.error;
