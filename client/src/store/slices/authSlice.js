@@ -355,5 +355,29 @@ const authSlice = createSlice({
       state.lastError = action.payload;
       state.isLoading = false;
     },
+
+    // ===== UTILITY ACTIONS =====
+
+    /**
+     * updateActivity - update last activity timestamp
+     *
+     * WHEN: User interacts with app
+     * PURPOSE: Track activity for auto logout
+     * STATE CHANGES: lastActivity = now
+     */
+    updateActivity: (state) => {
+      state.lastActivity = Date.now();
+    },
+
+    /**
+     * setLoading - Set loading state
+     *
+     * WHEN: Starting/Stopping operations
+     * PURPOSE: Control loading UI
+     * STATE CHANGES: isLoading = true/false
+     */
+    setLoading: (state, action) => {
+      state.isLoading = action.payload;
+    },
   },
 });
