@@ -430,3 +430,21 @@ export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectIsLoading = (state) => state.auth.isLoading;
 export const selectRequires2FA = (state) => state.auth.requiresTwoFactor;
 export const selectAuthError = (state) => state.auth.error;
+
+// Get computed/combined values
+export const selectTokens = (state) => ({
+  accessToken: state.auth.accessToken,
+  refreshToken: state.auth.refreshToken,
+});
+
+export const selectTwoFactorData = (state) => ({
+  requiresTwoFactor: state.auth.requiresTwoFactor,
+  tempUserId: state.auth.tempUserId,
+  tempEmail: state.auth.tempEmail,
+});
+
+export const selectSessionInfo = (state) => ({
+  loginTimestamp: state.auth.loginTimestamp,
+  lastActivity: state.auth.lastActivity,
+  isAuthenticated: state.auth.isAuthenticated,
+});
