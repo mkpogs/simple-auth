@@ -406,3 +406,20 @@ export const {
   updateActivity,
   setLoading,
 } = authSlice.actions;
+
+/**
+ * Selector Functions (Optional) - Helper functions to get data from the state
+ *
+ * WHY SELECTORS:
+ *  - Avoid repeating state.auth.user everywhere
+ *  - Centralize data access (easier to refactor later)
+ *  - Can add computed values/transformations if needed
+ *  - Better performance with memoization
+ *
+ * HOW TO USE:
+ *  const user = useSelector(selectUser);
+ *  const isAuthenticated = useSelector(selectIsAuthenticated);
+ */
+
+// Get entire auth state
+export const selectAuth = (state) => state.auth;
