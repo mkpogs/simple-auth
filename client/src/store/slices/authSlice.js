@@ -448,3 +448,18 @@ export const selectSessionInfo = (state) => ({
   lastActivity: state.auth.lastActivity,
   isAuthenticated: state.auth.isAuthenticated,
 });
+
+// Get user role for permission checks
+export const selectUserRole = (state) => state.auth.user?.role || null;
+
+// Check if user has specific role
+export const selectHasRole = (role) => (state) => {
+  const userRole = state.auth.user?.role;
+  if (!userRole) return false;
+
+  // Admin has access to everything
+  if (userRole === "admin") return true;
+
+  // Check specific role
+  return userRole === role;
+};
