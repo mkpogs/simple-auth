@@ -250,6 +250,35 @@ export const use2FA = () => {
       dispatch(setLoading(false));
     },
   });
+
+  // ===== UTILITY FUNCTIONS =====
+  /**
+   * 🔍 Check if 2FA is enabled
+   */
+  const is2FAEnabled = () => {
+    return twoFactorStatus?.enabled || user?.twoFactorEnabled || false;
+  };
+
+  /**
+   * 🔍 Check if 2FA setup is in progress
+   */
+  const is2FASetupInProgress = () => {
+    return enable2FAMutation.isSuccess && !verify2FASetupMutation.isSuccess;
+  };
+
+  /**
+   * 🧹 Clear current error
+   */
+  const clear2FAError = () => {
+    dispatch(clearError());
+  };
+
+  /**
+   * 🔄 Refresh 2FA status
+   */
+  const refresh2FAStatus = () => {
+    refetchStatus();
+  };
 };
 
 export default use2FA;
