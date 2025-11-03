@@ -373,6 +373,30 @@ export const useAuth = () => {
    * 👤 Check if current user is regular user
    */
   const isRegularUser = () => hasRole("user");
+
+  // ===== RETURN HOOK INTERFACE =====
+  /**
+   * 🎯 Return everything components need
+   */
+  return {
+    // *** AUTHENTICATION STATE ***
+    user,
+    isAuthenticated,
+    isLoading:
+      isLoading ||
+      loginMutation.isPending ||
+      registerMutation.isPending ||
+      verify2FAMutation.isPending ||
+      logoutMutation.isPending ||
+      verifyEmailMutation.isPending ||
+      resendOTPMutation.isPending ||
+      forgotPasswordMutation.isPending ||
+      resetPasswordMutation.isPending,
+    error,
+    requiresTwoFactor,
+    twoFactorData,
+    userRole,
+  };
 };
 
 export default useAuth;
