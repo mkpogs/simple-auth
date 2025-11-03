@@ -118,8 +118,49 @@ export const useAuth = () => {
   });
 
   /**
-   *
+   * Register Mutation - Handles new user registration
    */
+  const registerMutation = useMutation({
+    mutationFn: authService.register,
+
+    // Before API call starts
+    onMutate: (userData) => {
+      console.log("Starting Registration for:", userData.email);
+      dispatch(setLoading(true));
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: (response, userData) => {
+      console.log("✅ Registration successful");
+
+      toast.success(
+        `Registration successful! 📧\nPlease check ${userData.email} for verification code.`,
+        { duration: 5000 }
+      );
+
+      // Registration doesn't auto-login - user needs to verify email first
+      dispatch(setLoading(false));
+    },
+
+    // API call failed
+    onError: () => {
+      console.error("❌ Registration failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Registration failed. Please try again.";
+
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
+    },
+
+    // After API call settles
+    onSettled: () => {
+      dispatch(setLoading(false));
+    },
+  });
 };
 
 export default useAuth;
