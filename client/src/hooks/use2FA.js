@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
   setLoading,
@@ -278,6 +278,35 @@ export const use2FA = () => {
    */
   const refresh2FAStatus = () => {
     refetchStatus();
+  };
+
+  // ===== RETURN HOOK INTERFACE =====
+  return {
+    // *** 2FA STATUS ***
+    twoFactorStatus,
+    is2FAEnabled: is2FAEnabled(),
+    is2FASetupInProgress: is2FASetupInProgress(),
+    isStatusLoading,
+    statusError,
+
+    // *** 2FA DATA ***
+    // QR code and secret from enable2FA response
+    qrCodeData: enable2FAMutation.data,
+    backupCodes: regenerateBackupCodesMutation.data?.backupCodes,
+
+    // *** LOADING STATES ***
+    isLoading:
+      isLoading ||
+      enable2FAMutation.isPending ||
+      verify2FASetupMutation.isPending ||
+      disable2FAMutation.isPending ||
+      regenerateBackupCodesMutation.isPending ||
+      isStatusLoading,
+
+    // *** 2FA ACTIONS ***
+    // *** UTILITIES ***
+    // *** DETAILED MUTATION STATES ***
+    // *** DEVELOPMENT HELPERS ***
   };
 };
 
