@@ -314,7 +314,47 @@ export const use2FA = () => {
     refreshStatus: refresh2FAStatus,
 
     // *** DETAILED MUTATION STATES ***
+    mutations: {
+      enable: {
+        isPending: enable2FAMutation.isPending,
+        isError: enable2FAMutation.isError,
+        isSuccess: enable2FAMutation.isSuccess,
+        error: enable2FAMutation.error,
+        data: enable2FAMutation.data,
+      },
+      verifySetup: {
+        isPending: verify2FAMutation.isPending,
+        isError: verify2FAMutation.isError,
+        isSuccess: verify2FAMutation.isSuccess,
+        error: verify2FAMutation.error,
+      },
+      disable: {
+        isPending: disable2FAMutation.isPending,
+        isError: disable2FAMutation.isError,
+        isSuccess: disable2FAMutation.isSuccess,
+        error: disable2FAMutation.error,
+      },
+      regenerateBackupCodes: {
+        isPending: regenerateBackupCodesMutation.isPending,
+        isError: regenerateBackupCodesMutation.isError,
+        isSuccess: regenerateBackupCodesMutation.isSuccess,
+        error: regenerateBackupCodesMutation.error,
+        data: regenerateBackupCodesMutation.data,
+      },
+    },
+
     // *** DEVELOPMENT HELPERS ***
+    ...(import.meta.env.VITE_NODE_ENV === "development" && {
+      _debug: {
+        twoFactorStatus,
+        mutations: {
+          enable: enable2FAMutation,
+          verifySetup: verify2FAMutation,
+          disable: disable2FAMutation,
+          regenerateBackupCodes: regenerateBackupCodesMutation,
+        },
+      },
+    }),
   };
 };
 
