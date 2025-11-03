@@ -202,6 +202,33 @@ export const useAuth = () => {
       toast.error(errorMessage);
     },
   });
+
+  /**
+   * Logout Mutation - Sign out user
+   */
+  const logoutMutation = useMutation({
+    mutationFn: () => authService.logout(auth.refreshToken),
+
+    // Before API call starts
+    onMutate: () => {
+      console.log("🔄 Starting logout process");
+    },
+
+    // API call successful
+    onSuccess: () => {
+      console.log("✅ Logout API successful");
+      dispatch(logoutAction());
+      toast.success("Logged out successfully 👋");
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ Logout API error:", error);
+      // Even if API fails, clear local data for security
+      dispatch(logoutAction());
+      toast.success("Logged out👋");
+    },
+  });
 };
 
 export default useAuth;
