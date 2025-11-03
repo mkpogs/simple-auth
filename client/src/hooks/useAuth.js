@@ -144,7 +144,7 @@ export const useAuth = () => {
     },
 
     // API call failed
-    onError: () => {
+    onError: (error) => {
       console.error("❌ Registration failed:", error);
 
       const errorMessage =
@@ -159,6 +159,47 @@ export const useAuth = () => {
     // After API call settles
     onSettled: () => {
       dispatch(setLoading(false));
+    },
+  });
+
+  /**
+   * 2FA Verification Mutation - Complete login with 2FA code
+   */
+  const verify2FAMutation = useMutation({
+    mutationFn: twoFactorService.verifyLogin,
+
+    // Before API call starts
+    onMutate: (verificationData) => {
+      console.log("🔄 Starting 2FA verification");
+      dispatch(setLoading(true));
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: (response) => {
+      console.log("✅ 2FA verification successful:", response.user.name);
+
+      dispatch(
+        twoFactorSuccess({
+          user: response.user,
+          tokens: response.tokens,
+        })
+      );
+
+      toast.success(`Welcome back, ${response.user.name}! 🎉`);
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ 2FA verification failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Invalid verification code. Please try again.";
+
+      dispatch(loginFailure(errorMessage));
+      toast.error(errorMessage);
     },
   });
 };
