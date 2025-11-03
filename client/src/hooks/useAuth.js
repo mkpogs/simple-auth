@@ -413,6 +413,39 @@ export const useAuth = () => {
     isAdmin,
     isModerator,
     isRegularUser,
+
+    // *** DETAILED MUTATION STATES ***
+    // For components that need fine-grained control
+    mutations: {
+      login: {
+        isPending: loginMutation.isPending,
+        isError: loginMutation.isError,
+        isSuccess: loginMutation.isSuccess,
+        error: loginMutation.error,
+      },
+      register: {
+        isPending: registerMutation.isPending,
+        isError: registerMutation.isError,
+        isSuccess: registerMutation.isSuccess,
+        error: registerMutation.error,
+      },
+      verify2FA: {
+        isPending: verify2FAMutation.isPending,
+        isError: verify2FAMutation.isError,
+        isSuccess: verify2FAMutation.isSuccess,
+        error: verify2FAMutation.error,
+      },
+      logout: {
+        isPending: logoutMutation.isPending,
+        isError: logoutMutation.isError,
+        isSuccess: logoutMutation.isSuccess,
+      },
+      verifyEmail: {
+        isPending: verifyEmailMutation.isPending,
+        isError: verifyEmailMutation.isError,
+        isSuccess: verifyEmailMutation.isSuccess,
+      },
+    },
   };
 };
 
