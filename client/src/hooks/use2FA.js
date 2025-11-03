@@ -298,13 +298,21 @@ export const use2FA = () => {
     isLoading:
       isLoading ||
       enable2FAMutation.isPending ||
-      verify2FASetupMutation.isPending ||
+      verify2FAMutation.isPending ||
       disable2FAMutation.isPending ||
       regenerateBackupCodesMutation.isPending ||
       isStatusLoading,
 
     // *** 2FA ACTIONS ***
+    enable2FA: enable2FAMutation.mutate,
+    verify2FASetup: verify2FAMutation.mutate,
+    disable2FA: disable2FAMutation.mutate,
+    regenerateBackupCodes: regenerateBackupCodesMutation.mutate,
+
     // *** UTILITIES ***
+    clearError: clear2FAError,
+    refreshStatus: refresh2FAStatus,
+
     // *** DETAILED MUTATION STATES ***
     // *** DEVELOPMENT HELPERS ***
   };
