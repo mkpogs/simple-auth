@@ -56,6 +56,70 @@ export const useAuth = () => {
   const userRole = useSelector(selectUserRole);
 
   // ===== MUTATIONS - Define API Calls =====
+
+  /**
+   * Login Mutation - Handles user login with 2FA support
+   */
+  const loginMutation = useMutation({
+    mutationFn: authService.login,
+
+    // Before API call starts
+    onMutate: (credentials) => {
+      console.log("Starting Login for:", credentials.email);
+      dispatch(loginStart());
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: (response, credentials) => {
+      console.log("✅ Login API successful:", {
+        requiresTwoFactor: response.requiresTwoFactor,
+        user: response.user?.name,
+      });
+
+      if (response.requiresTwoFactor) {
+        // Login valid but needs 2FA verification
+        console.log("🔐 2FA required for user:", credentials.email);
+
+        dispatch(
+          loginRequires2FA({
+            tempUserId: response.tempUserId,
+            email: credentials.email,
+          })
+        );
+        toast.success(`Verification code sent to ${credentials.email}`);
+      } else {
+        // Complete login success - no 2FA needed
+        console.log("✅ Login completed successfully");
+
+        dispatch(
+          loginSuccess({
+            user: response.user,
+            tokens: response.tokens,
+          })
+        );
+
+        toast.success(`Welcome back, ${response.user.name}! 🎉`);
+      }
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ Login failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Login failed. Please try again.";
+
+      dispatch(loginFailure(errorMessage));
+      toast.error(errorMessage);
+    },
+  });
+
+  /**
+   *
+   */
 };
 
 export default useAuth;
