@@ -207,6 +207,49 @@ export const use2FA = () => {
       dispatch(setLoading(false));
     },
   });
+
+  /**
+   * Regenerate Backup Codes - Generate new backup codes
+   */
+  const regenerateBackupCodesMutation = useMutation({
+    mutationFn: twoFactorService.regenerateBackupCodes,
+
+    // Before API call starts
+    onMutate: () => {
+      console.log("🔄 Regenerating backup codes");
+      dispatch(setLoading(true));
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: (response) => {
+      console.log("✅ Backup codes regenerated");
+
+      toast.success(
+        "New backup codes generated! 🔑\nPlease save them in a secure location."
+      );
+
+      return response; // Contains new backup codes
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ Backup codes regeneration failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to generate backup codes. Please try again.";
+
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
+    },
+
+    // After API call settles
+    onSettled: () => {
+      dispatch(setLoading(false));
+    },
+  });
 };
 
 export default use2FA;
