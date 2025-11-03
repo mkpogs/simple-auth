@@ -446,6 +446,23 @@ export const useAuth = () => {
         isSuccess: verifyEmailMutation.isSuccess,
       },
     },
+
+    // *** DEVELOPMENT HELPERS ***
+    ...(import.meta.env.VITE_NODE_ENV === "development" && {
+      _debug: {
+        authState: auth,
+        allMutations: {
+          login: loginMutation,
+          register: registerMutation,
+          verify2FA: verify2FAMutation,
+          logout: logoutMutation,
+          verifyEmail: verifyEmailMutation,
+          resendOTP: resendOTPMutation,
+          forgotPassword: forgotPasswordMutation,
+          resetPassword: resetPasswordMutation,
+        },
+      },
+    }),
   };
 };
 
