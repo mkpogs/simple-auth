@@ -340,6 +340,39 @@ export const useAuth = () => {
       toast.error(errorMessage);
     },
   });
+
+  // ===== UTILITY FUNCTIONS =====
+
+  /**
+   * 🧹 Clear current authentication error
+   */
+  const clearAuthError = () => {
+    dispatch(clearError());
+  };
+
+  /**
+   * 🔍 Check if user has specific role
+   */
+  const hasRole = (role) => {
+    if (!userRole) return false;
+    if (userRole === "admin") return true; // Admin has all permissions
+    return userRole === role;
+  };
+
+  /**
+   * 👑 Check if current user is admin
+   */
+  const isAdmin = () => hasRole("admin");
+
+  /**
+   * 🛡️ Check if current user is moderator or admin
+   */
+  const isModerator = () => hasRole("moderator") || hasRole("admin");
+
+  /**
+   * 👤 Check if current user is regular user
+   */
+  const isRegularUser = () => hasRole("user");
 };
 
 export default useAuth;
