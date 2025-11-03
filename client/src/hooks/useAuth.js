@@ -229,6 +229,48 @@ export const useAuth = () => {
       toast.success("Logged out👋");
     },
   });
+
+  /**
+   * Email Verification Mutation - Verify email with OTP code
+   */
+  const verifyEmailMutation = useMutation({
+    mutationFn: authService.verifyOTP,
+
+    // Before API call starts
+    onMutate: (verificationData) => {
+      console.log("🔄 Starting email verification");
+      dispatch(setLoading(true));
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: (response) => {
+      console.log("✅ Email verification successful");
+
+      toast.success(
+        "Email verified successfully! ✅\nYou can now login with your credentials."
+      );
+      dispatch(setLoading(false));
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ Email verification failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Verification failed. Please check your code.";
+
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
+    },
+
+    // After API call settles
+    onSettled: () => {
+      dispatch(setLoading(false));
+    },
+  });
 };
 
 export default useAuth;
