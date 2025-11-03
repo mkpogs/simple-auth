@@ -154,6 +154,59 @@ export const use2FA = () => {
       dispatch(setLoading(false));
     },
   });
+
+  /**
+   * Disable 2FA - Turn off 2FA for user account
+   */
+  const disable2FAMutation = useMutation({
+    mutationFn: ({ password, confirmationCode }) =>
+      twoFactorService.disable(password, confirmationCode),
+
+    // Before API call starts
+    onMutate: () => {
+      console.log("🔄 Disabling 2FA");
+      dispatch(setLoading(true));
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: () => {
+      console.log("✅ 2FA disabled successfully");
+
+      // Update user profile to reflect 2FA disabled
+      dispatch(
+        updateUserProfile({
+          twoFactorEnabled: false,
+          twoFactorDisabledAt: new Date().toISOString(),
+        })
+      );
+
+      toast.success(
+        "2FA disabled successfully ⚠️\nYour account security has been reduced."
+      );
+
+      // Refresh 2FA status
+      refetchStatus();
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ 2FA disable failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to disable 2FA. Please check your credentials.";
+
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
+    },
+
+    // After API call settles
+    onSettled: () => {
+      dispatch(setLoading(false));
+    },
+  });
 };
 
 export default use2FA;
