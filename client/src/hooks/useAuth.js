@@ -294,6 +294,28 @@ export const useAuth = () => {
       toast.error(errorMessage);
     },
   });
+
+  /**
+   * Forgot Password Mutation - Send password reset email
+   */
+  const forgotPasswordMutation = useMutation({
+    mutationFn: authService.forgotPassword,
+
+    onSuccess: (response, email) => {
+      console.log("✅ Password reset email sent");
+      toast.success(`Password reset instructions sent to ${email} 📧`);
+    },
+
+    onError: (error) => {
+      console.error("❌ Forgot password failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to send reset email.";
+      toast.error(errorMessage);
+    },
+  });
 };
 
 export default useAuth;
