@@ -316,6 +316,30 @@ export const useAuth = () => {
       toast.error(errorMessage);
     },
   });
+
+  /**
+   * Reset Password Mutation - Reset password using token
+   */
+  const resetPasswordMutation = useMutation({
+    mutationFn: authService.resetPassword,
+
+    onSuccess: () => {
+      console.log("✅ Password reset successful");
+      toast.success(
+        "Password reset successfully! 🔐\nYou can now login with your new password."
+      );
+    },
+
+    onError: (error) => {
+      console.error("❌ Password reset failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Password reset failed. Please try again.";
+      toast.error(errorMessage);
+    },
+  });
 };
 
 export default useAuth;
