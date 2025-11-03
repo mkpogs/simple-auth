@@ -37,6 +37,23 @@ export const use2FA = () => {
   // ===== SELECTORS =====
   const user = useSelector(selectUser);
   const isLoading = useSelector(selectIsLoading);
+
+  // ===== 2FA STATUS QUERY =====
+  /**
+   * 🔍 Get 2FA Status - Checks if 2FA is enabled for the user
+   */
+  const {
+    data: twoFactorStatus,
+    isLoading: isStatusLoading,
+    error: statusError,
+    refetch: refetchStatus,
+  } = useQuery({
+    queryKey: queryKeys.twoFactor.status,
+    queryFn: twoFactorService.getStatus,
+    enabled: !!user, // Only run if user is authenticated
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
+  });
 };
 
 export default use2FA;
