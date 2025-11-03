@@ -102,6 +102,58 @@ export const use2FA = () => {
       dispatch(setLoading(false));
     },
   });
+
+  /**
+   * Verify 2FA Setup - Complete 2FA setup with TOTP code
+   */
+  const verify2FAMutation = useMutation({
+    mutationFn: twoFactorService.verifySetup,
+
+    // Before API call starts
+    onMutate: (token) => {
+      console.log("🔄 Verifying 2FA setup");
+      dispatch(setLoading(true));
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: (response) => {
+      console.log("✅ 2FA setup completed");
+
+      // Update user profile to reflect 2FA enabled
+      dispatch(
+        updateUserProfile({
+          twoFactorEnabled: true,
+          twoFactorSetupAt: new Date().toISOString(),
+        })
+      );
+
+      toast.success(
+        "2FA enabled successfully! 🎉\nYour account is now more secure."
+      );
+
+      // Refresh 2FA status
+      refetchStatus();
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ 2FA setup verification failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Invalid verification code. Please try again.";
+
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
+    },
+
+    // After API call settles
+    onSettled: () => {
+      dispatch(setLoading(false));
+    },
+  });
 };
 
 export default use2FA;
