@@ -406,6 +406,13 @@ export const useAuth = () => {
     resendOTP: resendOTPMutation.mutate,
     forgotPassword: forgotPasswordMutation.mutate,
     resetPassword: resetPasswordMutation.mutate,
+
+    // *** UTILITY FUNCTIONS ***
+    clearError: clearAuthError,
+    hasRole,
+    isAdmin,
+    isModerator,
+    isRegularUser,
   };
 };
 
