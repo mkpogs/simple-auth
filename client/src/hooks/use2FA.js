@@ -54,6 +54,54 @@ export const use2FA = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 2,
   });
+
+  // ===== MUTATIONS =====
+
+  /**
+   * 🔐 Enable 2FA Mutation - Initiates 2FA setup process
+   *  - Returns QR code and secret for authenticator app
+   */
+  const enable2FAMutation = useMutation({
+    mutationFn: twoFactorService.enable,
+
+    // Before API call starts
+    onMutate: () => {
+      console.log("🔄 Starting 2FA setup");
+      dispatch(setLoading(true));
+      dispatch(clearError());
+    },
+
+    // API call successful
+    onSuccess: (response) => {
+      console.log("✅ 2FA setup initiated");
+
+      toast.success(
+        "2FA setup started! 🔐\nScan the QR code with your authenticator app."
+      );
+      dispatch(setLoading(false));
+
+      // Response contains QR code and secret
+      return response;
+    },
+
+    // API call failed
+    onError: (error) => {
+      console.error("❌ 2FA setup failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to setup 2FA. Please try again.";
+
+      dispatch(setError(errorMessage));
+      toast.error(errorMessage);
+    },
+
+    // After API call settles
+    onSettled: () => {
+      dispatch(setLoading(false));
+    },
+  });
 };
 
 export default use2FA;
