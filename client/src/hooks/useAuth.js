@@ -271,6 +271,29 @@ export const useAuth = () => {
       dispatch(setLoading(false));
     },
   });
+
+  /**
+   * Resend OTP Mutation - Send new verification code to email
+   */
+  const resendOTPMutation = useMutation({
+    mutationFn: authService.resendOTP,
+
+    // On successful resend
+    onSuccess: (response, email) => {
+      console.log("✅ OTP resent successfully");
+      toast.success(`New verification code sent to ${email} 📧`);
+    },
+
+    onError: (error) => {
+      console.error("❌ Resend OTP failed:", error);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to send verification code.";
+      toast.error(errorMessage);
+    },
+  });
 };
 
 export default useAuth;
