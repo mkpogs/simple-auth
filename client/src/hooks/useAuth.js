@@ -42,6 +42,20 @@ import { authService, twoFactorService } from "../services";
  * HOW TO USE:
  *  - const { login, logout, user, isLoading, error } = useAuth();
  */
-export const useAuth = () => {};
+export const useAuth = () => {
+  const dispatch = useDispatch();
+
+  // ===== SELECTORS - Get Data from Redux Store =====
+  const auth = useSelector(selectAuth);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const user = useSelector(selectUser);
+  const isLoading = useSelector(selectIsLoading);
+  const requiresTwoFactor = useSelector(selectRequires2FA);
+  const error = useSelector(selectAuthError);
+  const twoFactorData = useSelector(selectTwoFactorData);
+  const userRole = useSelector(selectUserRole);
+
+  // ===== MUTATIONS - Define API Calls =====
+};
 
 export default useAuth;
