@@ -396,6 +396,16 @@ export const useAuth = () => {
     requiresTwoFactor,
     twoFactorData,
     userRole,
+
+    // *** AUTHENTICATION ACTIONS ***
+    login: loginMutation.mutate,
+    register: registerMutation.mutate,
+    logout: logoutMutation.mutate,
+    verify2FA: verify2FAMutation.mutate,
+    verifyEmail: verifyEmailMutation.mutate,
+    resendOTP: resendOTPMutation.mutate,
+    forgotPassword: forgotPasswordMutation.mutate,
+    resetPassword: resetPasswordMutation.mutate,
   };
 };
 
