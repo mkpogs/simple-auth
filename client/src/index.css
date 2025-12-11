@@ -7,7 +7,7 @@
 =============================== */
 :root{
   --bg-color: #F5FDF9;
-  --nav-bg-color: #FDFFFE
+  --nav-bg-color: #FDFFFE;
 
   --primary-black:#070707;
   --heading-black: #060606;
@@ -61,24 +61,67 @@
 
   /*** Green - Exhilarating Green ***/
   --green-base: #7FC483;
-  /* --green-tint-10: #;
-  --green-tint-20: #;
-  --green-tint-30: #;
-  --green-tint-40: #;
-  --green-tint-50: #;
-  --green-tint-60: #;
-  --green-tint-70: #;
-  --green-tint-80: #;
-  --green-tint-90: #;
-  --green-shade-10: #;
-  --green-shade-20: #;
-  --green-shade-30: #;
-  --green-shade-40: #;
-  --green-shade-50: #;
-  --green-shade-60: #;
-  --green-shade-70: #;
-  --green-shade-80: #;
-  --green-shade-90: #; */
+  --green-tint-10: #8cca8f;
+  --green-tint-20: #99d09c;
+  --green-tint-30: #a5d6a8;
+  --green-tint-40: #b2dcb5;
+  --green-tint-50: #bfe2c1;
+  --green-tint-60: #cce7cd;
+  --green-tint-70: #d9edda;
+  --green-tint-80: #e5f3e6;
+  --green-tint-90: #f2f9f3;
+
+  --green-shade-10: #72b076;
+  --green-shade-20: #669d69;
+  --green-shade-30: #59895c;
+  --green-shade-40: #4c764f;
+  --green-shade-50: #406242;
+  --green-shade-60: #334e34;
+  --green-shade-70: #263b27;
+  --green-shade-80: #19271a;
+  --green-shade-90: #0d140d;
+
+  /*** Yellow - Fine Gold ***/
+  --yellow-base: ##DAA520;
+  --yellow-tint-10: #deae36;
+  --yellow-tint-20: #e1b74d;
+  --yellow-tint-30: #e5c063;
+  --yellow-tint-40: #e9c979;
+  --yellow-tint-50: #edd290;
+  --yellow-tint-60: #f0dba6;
+  --yellow-tint-70: #f4e4bc;
+  --yellow-tint-80: #2c2106;
+  --yellow-tint-90: #161103;
+  --yellow-shade-10: #c4951d;
+  --yellow-shade-20: #ae841a;
+  --yellow-shade-30: #997416;
+  --yellow-shade-40: #836313;
+  --yellow-shade-50: #6d5310;
+  --yellow-shade-60: #57420d;
+  --yellow-shade-70: #41320a;
+  --yellow-shade-80: #2c2106;
+  --yellow-shade-90: #161103;
+
+  /*** Orange - Poppy Flower ***/
+  --orange-base: #EC5800;
+  --orange-tint-10: #ee691a;
+  --orange-tint-20: #f07933;
+  --orange-tint-30: #f28a4d;
+  --orange-tint-40: #f49b66;
+  --orange-tint-50: #f6ac80;
+  --orange-tint-60: #f7bc99;
+  --orange-tint-70: #f9cdb3;
+  --orange-tint-80: #fbdecc;
+  --orange-tint-90: #fdeee6;
+  --orange-shade-10: #d44f00;
+  --orange-shade-20: #bd4600;
+  --orange-shade-30: #a53e00;
+  --orange-shade-40: #8e3500;
+  --orange-shade-50: #762c00;
+  --orange-shade-60: #5e2300;
+  --orange-shade-70: #471a00;
+  --orange-shade-80: #2f1200;
+  --orange-shade-90: #180900;
 
   /* Font */
   --font-body: "Montserrat", sans-serif;
