@@ -8,7 +8,15 @@
 :root{
   --bg-color: #F5FDF9;
 
-  --nav-bg-color: #FDFFFE;
+  /*** Black - Black Metal ***/
+  --white-base:#FDFFFE;
+  --white-tint-40: #fefffe;
+  --white-tint-60: #feffff;
+  --white-tint-80: #ffffff;
+  --white-shade-20: #cacccb;
+  --white-shade-40: #989998;
+  --white-shade-60: #656666;
+  --white-shade-80: #333333;
 
   /*** Black - Black Metal ***/
   --black-base:#070707;
