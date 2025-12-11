@@ -1,22 +1,64 @@
 @import url("https://fonts.googleapis.com/css2?family=Domine:wght@400..700&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap");
 @import "tailwindcss";
 
-@theme {
-  --font-family-body: "Montserrat", sans-serif;
-  --font-family-heading: "Domine", serif;
+
+/* ============================
+    Global Variables
+=============================== */
+:root{
+  --bg-color: #F5FDF9;
+  --nav-bg-color: #FDFFFE
+
+  --primary-black:#070707;
+  --heading-black: #060606;
+
+  --primary-grey: #8D8D8D;
+  --secondary-grey: ##B2B2B2;
+  --tertiary-grey: #595959;
+
+  /*** Red - Bloody Salmon ***/
+  --red-base: #CC4434;
+
+  /* Tint (Lighter) */
+  --red-tint-10: #d15748;
+  --red-tint-20: #d6695d;
+  --red-tint-30: #db7c71;
+  --red-tint-40: #e08f85;
+  --red-tint-50: #e6a29a;
+  --red-tint-60: #ebb4ae;
+  --red-tint-70: #f0c7c2;
+  --red-tint-80: #f5dad6;
+  --red-tint-90: #faeceb;
+
+  /* Shade (darker) */
+  --red-shade-10: #b83d2f;
+  --red-shade-20: #a3362a;
+  --red-shade-30: #8f3024;
+  --red-shade-40: #7a291f;
+  --red-shade-50: #66221a;
+  --red-shade-60: #521b15;
+  --red-shade-70: #3d1410;
+  --red-shade-80: #290e0a;
+  --red-shade-90: #140705;
+
+
+  --primary-blue: #3988C5;
+
+
+  --primary-green: #7FC483;
+
+  /* Font */
+  --font-body: "Montserrat", sans-serif;
+  --font-heading: "Domine", serif;
+  
 }
 
-@layer base {
-  * {
-    font-family: var(--font-family-body);
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-family-heading);
-  }
+* {
+  font-family: var(--font-body);
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+
