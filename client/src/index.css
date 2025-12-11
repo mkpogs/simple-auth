@@ -18,8 +18,6 @@
 
   /*** Red - Bloody Salmon ***/
   --red-base: #CC4434;
-
-  /* Tint (Lighter) */
   --red-tint-10: #d15748;
   --red-tint-20: #d6695d;
   --red-tint-30: #db7c71;
@@ -29,8 +27,6 @@
   --red-tint-70: #f0c7c2;
   --red-tint-80: #f5dad6;
   --red-tint-90: #faeceb;
-
-  /* Shade (darker) */
   --red-shade-10: #b83d2f;
   --red-shade-20: #a3362a;
   --red-shade-30: #8f3024;
@@ -42,10 +38,47 @@
   --red-shade-90: #140705;
 
 
-  --primary-blue: #3988C5;
+  /*** Blue - Klaxosaur Blue ***/
+  --blue-base: #3988C5;
+  --blue-tint-10: #4d94cb;
+  --blue-tint-20: #61a0d1;
+  --blue-tint-30: #74acd6;
+  --blue-tint-40: #88b8dc;
+  --blue-tint-50: #9cc4e2;
+  --blue-tint-60: #b0cfe8;
+  --blue-tint-70: #c4dbee;
+  --blue-tint-80: #d7e7f3;
+  --blue-tint-90: #ebf3f9;
+  --blue-shade-10: #337ab1;
+  --blue-shade-20: #2e6d9e;
+  --blue-shade-30: #285f8a;
+  --blue-shade-40: #225276;
+  --blue-shade-50: #1d4463;
+  --blue-shade-60: #17364f;
+  --blue-shade-70: #11293b;
+  --blue-shade-80: #0b1b27;
+  --blue-shade-90: #060e14;
 
-
-  --primary-green: #7FC483;
+  /*** Green - Exhilarating Green ***/
+  --green-base: #7FC483;
+  /* --green-tint-10: #;
+  --green-tint-20: #;
+  --green-tint-30: #;
+  --green-tint-40: #;
+  --green-tint-50: #;
+  --green-tint-60: #;
+  --green-tint-70: #;
+  --green-tint-80: #;
+  --green-tint-90: #;
+  --green-shade-10: #;
+  --green-shade-20: #;
+  --green-shade-30: #;
+  --green-shade-40: #;
+  --green-shade-50: #;
+  --green-shade-60: #;
+  --green-shade-70: #;
+  --green-shade-80: #;
+  --green-shade-90: #; */
 
   /* Font */
   --font-body: "Montserrat", sans-serif;
