@@ -7,14 +7,31 @@
 =============================== */
 :root{
   --bg-color: #F5FDF9;
+
   --nav-bg-color: #FDFFFE;
 
-  --primary-black:#070707;
-  --heading-black: #060606;
+  /*** Black - Black Metal ***/
+  --black-base:#070707;
+  --black-tint-20: #393939;
+  --black-tint-40: #6a6a6a;
+  --black-tint-60: #9c9c9c;
+  --black-tint-80: #cdcdcd;
+  --black-shade-20: #060606;
+  --black-shade-40: #040404;
+  --black-shade-60: #030303;
+  --black-shade-80: #010101;
 
-  --primary-grey: #8D8D8D;
-  --secondary-grey: ##B2B2B2;
-  --tertiary-grey: #595959;
+  /*** Grey - More Than A Week ***/
+  --grey-base:#8D8D8D;
+  --grey-tint-20: #a4a4a4;
+  --grey-tint-40: #bbbbbb;
+  --grey-tint-60: #d1d1d1;
+  --grey-tint-80: #e8e8e8;
+  --grey-shade-20: #717171;
+  --grey-shade-40: #555555;
+  --grey-shade-60: #383838;
+  --grey-shade-80: #1c1c1c;
+
 
   /*** Red - Bloody Salmon ***/
   --red-base: #CC4434;
