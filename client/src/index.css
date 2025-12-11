@@ -1,22 +1,191 @@
 @import url("https://fonts.googleapis.com/css2?family=Domine:wght@400..700&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap");
 @import "tailwindcss";
 
-@theme {
-  --font-family-body: "Montserrat", sans-serif;
-  --font-family-heading: "Domine", serif;
+
+/* ============================
+    Global Variables
+=============================== */
+:root{
+  /*===== Font =====*/
+  --font-body: "Montserrat", sans-serif;
+  --font-heading: "Domine", serif;
+
+  /*===== Colors =====*/
+  --bg-color: #F5FDF9;
+
+  /*** Black - Black Metal ***/
+  --white-base:#FDFFFE;
+  --white-tint-40: #fefffe;
+  --white-tint-60: #feffff;
+  --white-tint-80: #ffffff;
+  --white-shade-20: #cacccb;
+  --white-shade-40: #989998;
+  --white-shade-60: #656666;
+  --white-shade-80: #333333;
+
+  /*** Black - Black Metal ***/
+  --black-base:#070707;
+  --black-tint-20: #393939;
+  --black-tint-40: #6a6a6a;
+  --black-tint-60: #9c9c9c;
+  --black-tint-80: #cdcdcd;
+  --black-shade-20: #060606;
+  --black-shade-40: #040404;
+  --black-shade-60: #030303;
+  --black-shade-80: #010101;
+
+  /*** Grey - More Than A Week ***/
+  --grey-base:#8D8D8D;
+  --grey-tint-20: #a4a4a4;
+  --grey-tint-40: #bbbbbb;
+  --grey-tint-60: #d1d1d1;
+  --grey-tint-80: #e8e8e8;
+  --grey-shade-20: #717171;
+  --grey-shade-40: #555555;
+  --grey-shade-60: #383838;
+  --grey-shade-80: #1c1c1c;
+
+
+  /*** Red - Bloody Salmon ***/
+  --red-base: #CC4434;
+  --red-tint-10: #d15748;
+  --red-tint-20: #d6695d;
+  --red-tint-30: #db7c71;
+  --red-tint-40: #e08f85;
+  --red-tint-50: #e6a29a;
+  --red-tint-60: #ebb4ae;
+  --red-tint-70: #f0c7c2;
+  --red-tint-80: #f5dad6;
+  --red-tint-90: #faeceb;
+  --red-shade-10: #b83d2f;
+  --red-shade-20: #a3362a;
+  --red-shade-30: #8f3024;
+  --red-shade-40: #7a291f;
+  --red-shade-50: #66221a;
+  --red-shade-60: #521b15;
+  --red-shade-70: #3d1410;
+  --red-shade-80: #290e0a;
+  --red-shade-90: #140705;
+
+
+  /*** Blue - Klaxosaur Blue ***/
+  --blue-base: #3988C5;
+  --blue-tint-10: #4d94cb;
+  --blue-tint-20: #61a0d1;
+  --blue-tint-30: #74acd6;
+  --blue-tint-40: #88b8dc;
+  --blue-tint-50: #9cc4e2;
+  --blue-tint-60: #b0cfe8;
+  --blue-tint-70: #c4dbee;
+  --blue-tint-80: #d7e7f3;
+  --blue-tint-90: #ebf3f9;
+  --blue-shade-10: #337ab1;
+  --blue-shade-20: #2e6d9e;
+  --blue-shade-30: #285f8a;
+  --blue-shade-40: #225276;
+  --blue-shade-50: #1d4463;
+  --blue-shade-60: #17364f;
+  --blue-shade-70: #11293b;
+  --blue-shade-80: #0b1b27;
+  --blue-shade-90: #060e14;
+
+  /*** Green - Exhilarating Green ***/
+  --green-base: #7FC483;
+  --green-tint-10: #8cca8f;
+  --green-tint-20: #99d09c;
+  --green-tint-30: #a5d6a8;
+  --green-tint-40: #b2dcb5;
+  --green-tint-50: #bfe2c1;
+  --green-tint-60: #cce7cd;
+  --green-tint-70: #d9edda;
+  --green-tint-80: #e5f3e6;
+  --green-tint-90: #f2f9f3;
+
+  --green-shade-10: #72b076;
+  --green-shade-20: #669d69;
+  --green-shade-30: #59895c;
+  --green-shade-40: #4c764f;
+  --green-shade-50: #406242;
+  --green-shade-60: #334e34;
+  --green-shade-70: #263b27;
+  --green-shade-80: #19271a;
+  --green-shade-90: #0d140d;
+
+  /*** Yellow - Fine Gold ***/
+  --yellow-base: ##DAA520;
+  --yellow-tint-10: #deae36;
+  --yellow-tint-20: #e1b74d;
+  --yellow-tint-30: #e5c063;
+  --yellow-tint-40: #e9c979;
+  --yellow-tint-50: #edd290;
+  --yellow-tint-60: #f0dba6;
+  --yellow-tint-70: #f4e4bc;
+  --yellow-tint-80: #2c2106;
+  --yellow-tint-90: #161103;
+  --yellow-shade-10: #c4951d;
+  --yellow-shade-20: #ae841a;
+  --yellow-shade-30: #997416;
+  --yellow-shade-40: #836313;
+  --yellow-shade-50: #6d5310;
+  --yellow-shade-60: #57420d;
+  --yellow-shade-70: #41320a;
+  --yellow-shade-80: #2c2106;
+  --yellow-shade-90: #161103;
+
+  /*** Orange - Poppy Flower ***/
+  --orange-base: #EC5800;
+  --orange-tint-10: #ee691a;
+  --orange-tint-20: #f07933;
+  --orange-tint-30: #f28a4d;
+  --orange-tint-40: #f49b66;
+  --orange-tint-50: #f6ac80;
+  --orange-tint-60: #f7bc99;
+  --orange-tint-70: #f9cdb3;
+  --orange-tint-80: #fbdecc;
+  --orange-tint-90: #fdeee6;
+  --orange-shade-10: #d44f00;
+  --orange-shade-20: #bd4600;
+  --orange-shade-30: #a53e00;
+  --orange-shade-40: #8e3500;
+  --orange-shade-50: #762c00;
+  --orange-shade-60: #5e2300;
+  --orange-shade-70: #471a00;
+  --orange-shade-80: #2f1200;
+  --orange-shade-90: #180900;
+
+  /*===== Shadows =====*/
+   /* Soft neutral shadow based on #F5FDF9 background */
+  --shadow-color: 150deg 10% 40%;
+
+  --shadow-elevation-low:
+    0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.20),
+    0.4px 0.8px 1px -1.2px hsl(var(--shadow-color) / 0.16),
+    1px 2px 2.5px -2.5px hsl(var(--shadow-color) / 0.12);
+
+  --shadow-elevation-medium:
+    0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.20),
+    0.8px 1.6px 2px -0.8px hsl(var(--shadow-color) / 0.18),
+    2.1px 4.1px 5.2px -1.7px hsl(var(--shadow-color) / 0.15),
+    5px 10px 12.6px -2.5px hsl(var(--shadow-color) / 0.12);
+
+  --shadow-elevation-high:
+    0.3px 0.5px 0.7px hsl(var(--shadow-color) / 0.18),
+    1.5px 2.9px 3.7px -0.4px hsl(var(--shadow-color) / 0.16),
+    2.7px 5.4px 6.8px -0.7px hsl(var(--shadow-color) / 0.15),
+    4.5px 8.9px 11.2px -1.1px hsl(var(--shadow-color) / 0.14),
+    7.1px 14.3px 18px -1.4px hsl(var(--shadow-color) / 0.12),
+    11.2px 22.3px 28.1px -1.8px hsl(var(--shadow-color) / 0.10),
+    17px 33.9px 42.7px -2.1px hsl(var(--shadow-color) / 0.08),
+    25px 50px 62.9px -2.5px hsl(var(--shadow-color) / 0.06);
+  
 }
 
-@layer base {
-  * {
-    font-family: var(--font-family-body);
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-family-heading);
-  }
+* {
+  font-family: var(--font-body);
 }
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+
